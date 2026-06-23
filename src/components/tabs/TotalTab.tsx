@@ -124,6 +124,15 @@ export default function TotalTab() {
         <Field label="処方日数（日分）" hint="開始日を1日目として数えます">
           <input type="number" min={1} value={teikiDays} onChange={(e) => setTeikiDays(e.target.value)} />
         </Field>
+        <Field label="クイック設定（日数）">
+          <div className="quick-row">
+            {[14, 21, 28, 35].map((n) => (
+              <button key={n} type="button" className="quick-btn" onClick={() => setTeikiDays(String(n))}>
+                {n}日
+              </button>
+            ))}
+          </div>
+        </Field>
       </div>
       <Field label="定期薬の用法" hint={teikiSlots.length ? `現在: ${formatSlots(teikiSlots)}（1日${teikiSlots.length}回）` : ''}>
         <SlotPicker slots={teikiSlots} onChange={changeTeikiSlots} />
