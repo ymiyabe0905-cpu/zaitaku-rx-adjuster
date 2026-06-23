@@ -26,7 +26,7 @@ export function NextRequestSection({
   baseUnit: string; // 単位 / 吸入 / 滴
   pkg: string; // 本 / キット
 }) {
-  const [remainPkg, setRemainPkg] = useState('0');
+  const [remainPkg, setRemainPkg] = useState(''); // 初期は空
   const [rxPkg, setRxPkg] = useState('1');
   const [visitISO, setVisitISO] = useState(todayISO());
   const [nextVisitISO, setNextVisitISO] = useState(todayISO());
@@ -65,8 +65,8 @@ export function NextRequestSection({
         訪問時の残数（{pkg}）と今回処方数（{pkg}）から、次サイクル（今回と同じ間隔）に向けて次回処方で依頼すべき{pkg}数を概算します。
       </p>
       <div className="form-row">
-        <Field label={`訪問時の残数（${pkg}）`} hint="小数可（例: 1.5）">
-          <input type="number" min={0} step="0.1" value={remainPkg} onChange={(e) => setRemainPkg(e.target.value)} />
+        <Field label={`訪問時の残数（${pkg}）`} hint="未入力は0として計算（小数可）">
+          <input type="number" min={0} step="0.5" value={remainPkg} onChange={(e) => setRemainPkg(e.target.value)} />
         </Field>
         <Field label={`今回処方数（${pkg}）`}>
           <input type="number" min={0} value={rxPkg} onChange={(e) => setRxPkg(e.target.value)} />
@@ -79,13 +79,19 @@ export function NextRequestSection({
         <Field label="次回訪問日">
           <input type="date" value={nextVisitISO} onChange={(e) => setNextVisitISO(e.target.value)} />
         </Field>
-        <Field label="クイック設定">
-          <GameButton
-            variant="sub"
-            onClick={() => setNextVisitISO(toISO(addDays(parseDate(visitISO || todayISO()), 28)))}
-          >
-            今回＋28日
-          </GameButton>
+        <Field label="クイック設定（次回訪問日）">
+          <div className="quick-row">
+            {[14, 21, 28].map((n) => (
+              <button
+                key={n}
+                type="button"
+                className="quick-btn"
+                onClick={() => setNextVisitISO(toISO(addDays(parseDate(visitISO || todayISO()), n)))}
+              >
+                ＋{n}日
+              </button>
+            ))}
+          </div>
         </Field>
       </div>
 

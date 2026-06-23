@@ -409,6 +409,25 @@ body {
   line-height: 1.7;
 }
 
+/* ---------- クイック設定ボタン ---------- */
+.quick-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.quick-btn {
+  font-family: var(--body-font);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  padding: 8px 10px;
+  box-shadow: inset -2px -2px 0 #ccc;
+}
+.quick-btn:active { transform: translate(1px, 1px); }
+
 /* ---------- モード切替（サブタブ） ---------- */
 .mode-toggle {
   display: flex;
