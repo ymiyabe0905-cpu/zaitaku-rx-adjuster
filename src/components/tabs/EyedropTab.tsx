@@ -19,6 +19,7 @@ import {
   HeroResult,
   NoteBox,
   Panel,
+  QuickDays,
   ResultGrid,
   ResultItem,
 } from '../ui';
@@ -162,6 +163,9 @@ export default function EyedropTab() {
         </Field>
         <Field label="持たせたい日" hint="この日まで残数を持たせたい（次回訪問・受診・配達など）">
           <input type="date" value={visitISO} onChange={(e) => setVisitISO(e.target.value)} />
+        </Field>
+        <Field label="クイック設定（開始日＋）">
+          <QuickDays baseISO={startISO} onPick={setVisitISO} />
         </Field>
       </div>
 

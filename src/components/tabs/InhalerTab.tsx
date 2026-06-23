@@ -19,6 +19,7 @@ import {
   HeroResult,
   NoteBox,
   Panel,
+  QuickDays,
   ResultGrid,
   ResultItem,
 } from '../ui';
@@ -169,6 +170,9 @@ function RegularMode() {
         </Field>
         <Field label="持たせたい日" hint="この日まで残数を持たせたい">
           <input type="date" value={visitISO} onChange={(e) => setVisitISO(e.target.value)} />
+        </Field>
+        <Field label="クイック設定（開始日＋）">
+          <QuickDays baseISO={startISO} onPick={setVisitISO} />
         </Field>
       </div>
 

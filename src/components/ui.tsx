@@ -3,8 +3,37 @@
  * 業務で読みやすいよう、入力欄・結果表示はシンプルに保つ。
  */
 import { ReactNode } from 'react';
-import { formatJP } from '../lib/dateUtils';
+import { addDays, formatJP, parseDate, toISO, todayISO } from '../lib/dateUtils';
 import { SLOT_LABEL, SLOT_ORDER, Slot, sortSlots } from '../lib/timing';
+
+/**
+ * クイック日付ボタン（基準日 + N日 をセット）。
+ * 持たせたい日・次回訪問日などを「開始日＋14/21/28日」で素早く設定する。
+ */
+export function QuickDays({
+  baseISO,
+  onPick,
+  days = [14, 21, 28],
+}: {
+  baseISO: string;
+  onPick: (iso: string) => void;
+  days?: number[];
+}) {
+  return (
+    <div className="quick-row">
+      {days.map((n) => (
+        <button
+          key={n}
+          type="button"
+          className="quick-btn"
+          onClick={() => onPick(toISO(addDays(parseDate(baseISO || todayISO()), n)))}
+        >
+          ＋{n}日
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /**
  * 用法（服用タイミング）選択。

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { calcNextRequest, buildNextRequestNote } from '../lib/nextRequest';
-import { addDays, diffDays, parseDate, toISO, todayISO } from '../lib/dateUtils';
+import { diffDays, parseDate, todayISO } from '../lib/dateUtils';
 import {
   DetailBox,
   ErrorBox,
@@ -8,6 +8,7 @@ import {
   GameButton,
   HeroResult,
   NoteBox,
+  QuickDays,
   ResultGrid,
   ResultItem,
 } from './ui';
@@ -75,18 +76,7 @@ export function NextRequestSection({
           <input type="date" value={nextVisitISO} onChange={(e) => setNextVisitISO(e.target.value)} />
         </Field>
         <Field label="クイック設定（次回訪問日）">
-          <div className="quick-row">
-            {[14, 21, 28].map((n) => (
-              <button
-                key={n}
-                type="button"
-                className="quick-btn"
-                onClick={() => setNextVisitISO(toISO(addDays(parseDate(visitISO || todayISO()), n)))}
-              >
-                ＋{n}日
-              </button>
-            ))}
-          </div>
+          <QuickDays baseISO={visitISO} onPick={setNextVisitISO} />
         </Field>
       </div>
 

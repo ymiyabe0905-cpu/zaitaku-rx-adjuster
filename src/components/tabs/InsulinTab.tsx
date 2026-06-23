@@ -16,6 +16,7 @@ import {
   HeroResult,
   NoteBox,
   Panel,
+  QuickDays,
   ResultGrid,
   ResultItem,
 } from '../ui';
@@ -259,6 +260,9 @@ export default function InsulinTab() {
         </Field>
         <Field label="持たせたい日" hint="この日まで残数を持たせたい">
           <input type="date" value={f.visitISO} onChange={(e) => set('visitISO', e.target.value)} />
+        </Field>
+        <Field label="クイック設定（開始日＋）">
+          <QuickDays baseISO={f.startISO} onPick={(v) => set('visitISO', v)} />
         </Field>
       </div>
 
