@@ -20,7 +20,7 @@ export interface QuickItem {
 export function QuickDays({
   baseISO,
   onPick,
-  days = [14, 21, 28],
+  days = [14, 21, 28, 35],
   items,
 }: {
   baseISO: string;

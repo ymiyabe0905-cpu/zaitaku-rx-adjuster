@@ -173,6 +173,7 @@ export default function EyedropTab() {
               { label: '＋14日', days: 14 },
               { label: '＋21日', days: 21 },
               { label: '＋28日', days: 28 },
+              { label: '＋35日', days: 35 },
               { label: '＋3か月', months: 3 },
               { label: '＋6か月', months: 6 },
             ]}
@@ -243,6 +244,7 @@ export default function EyedropTab() {
             { label: '＋14日', days: 14 },
             { label: '＋21日', days: 21 },
             { label: '＋28日', days: 28 },
+            { label: '＋35日', days: 35 },
             { label: '＋3か月', months: 3 },
             { label: '＋6か月', months: 6 },
           ]}

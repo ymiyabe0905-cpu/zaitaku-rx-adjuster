@@ -70,7 +70,7 @@ export default function EndDateTab() {
         </Field>
         <Field label="クイック設定（日数）">
           <div className="quick-row">
-            {[14, 21, 28].map((n) => (
+            {[14, 21, 28, 35].map((n) => (
               <button key={n} type="button" className="quick-btn" onClick={() => setDays(String(n))}>
                 {n}日
               </button>
