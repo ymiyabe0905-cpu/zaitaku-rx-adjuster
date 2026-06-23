@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// ローカル試作用の最小設定。base を相対パスにしておくと、
-// dist/ をそのままファイルとして開いても崩れにくい。
+// GitHub Pages（プロジェクトサイト）で公開するため base をリポジトリ名に合わせる。
+// ローカルでも問題なく動作する。
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  base: '/zaitaku-rx-adjuster/',
 });
