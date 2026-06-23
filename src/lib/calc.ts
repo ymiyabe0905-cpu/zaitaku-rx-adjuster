@@ -302,23 +302,27 @@ export function buildDailyAdjustNote(r: DailyAdjustResult): string {
   );
 }
 
-/** 隔日/間隔/曜日固定/月固定用（回数・錠数中心） */
+/**
+ * 隔日/間隔/曜日固定/月固定用（回数中心）。
+ * unit は数量の単位（錠・枚・本・包・個 など）。
+ */
 export function buildScheduleNote(
   r: ScheduleResult,
   label: string,
   start: Date,
   end: Date,
+  unit = '錠',
 ): string {
   if (r.doseCount === 0) {
-    return `${formatJP(start)}〜${formatJP(end)}の期間に、${label}の服用日はありません。`;
+    return `${formatJP(start)}〜${formatJP(end)}の期間に、${label}の使用日はありません。`;
   }
   const base =
-    `${label}：${formatJP(start)}〜${formatJP(end)}の期間に${r.doseCount}回服用します。` +
-    `必要錠数は${r.requiredTablets}錠（1回${r.perDose}錠）です。`;
+    `${label}：${formatJP(start)}〜${formatJP(end)}の期間に${r.doseCount}回使用します。` +
+    `必要数は${r.requiredTablets}${unit}（1回${r.perDose}${unit}）です。`;
   if (r.residual > 0) {
     return r.shortageTablets > 0
-      ? base + `残薬${r.residual}錠を差し引くと、不足は${r.shortageTablets}錠です。`
-      : base + `残薬${r.residual}錠で足ります（不足なし）。`;
+      ? base + `残数${r.residual}${unit}を差し引くと、不足は${r.shortageTablets}${unit}です。`
+      : base + `残数${r.residual}${unit}で足ります（不足なし）。`;
   }
   return base;
 }

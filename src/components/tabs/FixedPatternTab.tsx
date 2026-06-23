@@ -30,6 +30,7 @@ export default function FixedPatternTab() {
   const [dayOfMonth, setDayOfMonth] = useState('17');
   const [perDose, setPerDose] = useState('1');
   const [residual, setResidual] = useState('0');
+  const [unit, setUnit] = useState('錠'); // 錠/枚/本/包/個（注射剤・貼付剤などに対応）
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcScheduleResult> | null>(null);
   const [label, setLabel] = useState('');
@@ -79,7 +80,8 @@ export default function FixedPatternTab() {
   return (
     <Panel title="固定パターン（隔日／4週ごと／曜日固定／毎月○日）" icon="◆">
       <p className="lead">
-        日数ではなく、期間内の実際の服用日を列挙して回数・必要錠数を数えます。「毎月○日」と「4週ごと（28日固定）」は別物です。
+        日数ではなく、期間内の実際の使用日を列挙して回数・必要数を数えます。内服・注射剤・貼付剤など、単位を選んで使えます。
+        「毎月○日」と「4週ごと（28日固定）」は別物です。
       </p>
 
       <div className="mode-toggle">
@@ -131,10 +133,19 @@ export default function FixedPatternTab() {
       )}
 
       <div className="form-row">
-        <Field label="1回量（錠）">
+        <Field label="単位" hint="内服=錠／貼付剤=枚／注射=本・管 など">
+          <select value={unit} onChange={(e) => setUnit(e.target.value)}>
+            {['錠', '枚', '本', '管', '包', '個'].map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={`1回量（${unit}）`}>
           <input type="number" min={0} step="0.5" value={perDose} onChange={(e) => setPerDose(e.target.value)} />
         </Field>
-        <Field label="残薬数（錠）">
+        <Field label={`残数（${unit}）`}>
           <input type="number" min={0} value={residual} onChange={(e) => setResidual(e.target.value)} />
         </Field>
       </div>
@@ -146,17 +157,17 @@ export default function FixedPatternTab() {
         <>
           <HeroResult
             items={[
-              { label: '必要錠数', value: `${result.requiredTablets}錠` },
-              { label: '不足数', value: `${result.shortageTablets}錠` },
+              { label: '必要数', value: `${result.requiredTablets}${unit}` },
+              { label: '不足数', value: `${result.shortageTablets}${unit}` },
             ]}
           />
-          <h3 className="list-title">服用予定日一覧（{result.doseCount}回）</h3>
+          <h3 className="list-title">使用予定日一覧（{result.doseCount}回）</h3>
           <DateChips dates={result.dates} />
-          <NoteBox text={buildScheduleNote(result, label, parseDate(startISO), parseDate(endISO))} />
+          <NoteBox text={buildScheduleNote(result, label, parseDate(startISO), parseDate(endISO), unit)} />
           <DetailBox>
             <ResultGrid>
-              <ResultItem label="服用回数" value={`${result.doseCount}回`} />
-              <ResultItem label="残薬" value={`${result.residual}錠`} />
+              <ResultItem label="使用回数" value={`${result.doseCount}回`} />
+              <ResultItem label="残数" value={`${result.residual}${unit}`} />
             </ResultGrid>
           </DetailBox>
         </>
