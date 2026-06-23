@@ -3,7 +3,6 @@ import {
   EyeTarget,
   EyedropInput,
   RatioKey,
-  RemainMode,
   RATIO_OPTIONS,
   VolumePreset,
   buildEyedropNote,
@@ -11,7 +10,7 @@ import {
   dropsPerBottle,
   volumeLabel,
 } from '../../lib/eyedrops';
-import { formatJP, parseDate } from '../../lib/dateUtils';
+import { formatJP, parseDate, todayISO } from '../../lib/dateUtils';
 import {
   DetailBox,
   ErrorBox,
@@ -36,12 +35,11 @@ export default function EyedropTab() {
   const [preset, setPreset] = useState<VolumePreset>('5');
   const [volumeOther, setVolumeOther] = useState('3');
   const [unusedBottles, setUnusedBottles] = useState('0');
-  const [remainMode, setRemainMode] = useState<RemainMode>('drops');
-  const [currentDrops, setCurrentDrops] = useState('100');
-  const [ratioKey, setRatioKey] = useState<RatioKey>('full');
+  // 残量は割合のみで入力。初期は未選択（空）
+  const [ratioKey, setRatioKey] = useState<RatioKey | ''>('');
   const [target, setTarget] = useState<EyeTarget>('both');
   const [timesPerDay, setTimesPerDay] = useState('2');
-  const [startISO, setStartISO] = useState('2026-06-17');
+  const [startISO, setStartISO] = useState(todayISO());
   const [visitISO, setVisitISO] = useState('2026-07-14');
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcEyedrop> | null>(null);
@@ -53,14 +51,15 @@ export default function EyedropTab() {
   function run() {
     setError('');
     try {
-      if (!startISO || !visitISO) throw new Error('開始日・次回訪問日を入力してください');
+      if (!startISO || !visitISO) throw new Error('開始日・持たせたい日を入力してください');
+      if (ratioKey === '') throw new Error('使用中ボトルの残量割合を選んでください');
       const volumeMl = preset === 'other' ? toNum(volumeOther, '容量(mL)', false) : volumeMlNow;
       const input: EyedropInput = {
         preset,
         volumeMl,
         unusedBottles: Math.floor(toNum(unusedBottles, '未使用本数')),
-        remainMode,
-        currentDrops: remainMode === 'drops' ? Math.floor(toNum(currentDrops, '使用中ボトルの残滴数')) : 0,
+        remainMode: 'ratio',
+        currentDrops: 0,
         ratioKey,
         target,
         dropsPerEyeDose: 1, // 1眼あたりの1回滴数は1滴で固定
@@ -105,32 +104,19 @@ export default function EyedropTab() {
         </Field>
       </div>
 
-      {/* 使用中ボトルの残量 */}
-      <h3 className="section-head">② 使用中ボトルの残量</h3>
-      <div className="mode-toggle">
-        <button className={`mode-btn${remainMode === 'drops' ? ' is-active' : ''}`} onClick={() => setRemainMode('drops')}>
-          残量を滴数で入力
-        </button>
-        <button className={`mode-btn${remainMode === 'ratio' ? ' is-active' : ''}`} onClick={() => setRemainMode('ratio')}>
-          残量割合で入力
-        </button>
-      </div>
+      {/* 使用中ボトルの残量（割合のみ） */}
+      <h3 className="section-head">② 使用中ボトルの残量（割合）</h3>
       <div className="form-row">
-        {remainMode === 'drops' ? (
-          <Field label="使用中ボトルの残滴数">
-            <input type="number" min={0} value={currentDrops} onChange={(e) => setCurrentDrops(e.target.value)} />
-          </Field>
-        ) : (
-          <Field label="使用中ボトルの残量割合" hint="概算（残量カウンターのような正確な値ではありません）">
-            <select value={ratioKey} onChange={(e) => setRatioKey(e.target.value as RatioKey)}>
-              {RATIO_OPTIONS.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}（×{o.factor}）
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
+        <Field label="使用中ボトルの残量割合" hint="概算（残量カウンターのような正確な値ではありません）">
+          <select value={ratioKey} onChange={(e) => setRatioKey(e.target.value as RatioKey | '')}>
+            <option value="">選択してください</option>
+            {RATIO_OPTIONS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}（×{o.factor}）
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
 
       {/* 点眼方法 */}

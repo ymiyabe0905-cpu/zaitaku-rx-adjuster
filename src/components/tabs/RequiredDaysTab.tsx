@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { calcRequiredDays, countDosesInRange } from '../../lib/calc';
-import { formatJP, isOnOrBefore, parseDate } from '../../lib/dateUtils';
+import { formatJP, isOnOrBefore, parseDate, todayISO } from '../../lib/dateUtils';
 import { SLOT_LABEL, Slot, formatSlots, sortSlots } from '../../lib/timing';
 import {
   DetailBox,
@@ -20,7 +20,7 @@ import {
  * 用法・開始タイミングを指定すると、終了日の最後の服用までの服用回数も表示する。
  */
 export default function RequiredDaysTab() {
-  const [startISO, setStartISO] = useState('2026-06-17');
+  const [startISO, setStartISO] = useState(todayISO());
   const [endISO, setEndISO] = useState('2026-06-30');
   const [slots, setSlots] = useState<Slot[]>(['morning', 'noon', 'evening']);
   const [startSlot, setStartSlot] = useState<Slot>('morning');

@@ -82,8 +82,8 @@ body {
 /* ---------- 変更ログ ボタン（右上） ---------- */
 .log-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 2px;
+  right: 10px;
   z-index: 5;
   font-family: var(--body-font);
   font-weight: 700;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { buildScheduleNote, calcScheduleResult } from '../../lib/calc';
-import { isOnOrBefore, parseDate, WEEKDAY_JP } from '../../lib/dateUtils';
+import { isOnOrBefore, parseDate, todayISO, WEEKDAY_JP } from '../../lib/dateUtils';
 import { intervalDates, monthlyByDayOfMonth, weekdayDates } from '../../lib/schedule';
 import {
   DateChips,
@@ -23,7 +23,7 @@ type Mode = 'qod' | 'week4' | 'weekday' | 'dayOfMonth';
  */
 export default function FixedPatternTab() {
   const [mode, setMode] = useState<Mode>('qod');
-  const [startISO, setStartISO] = useState('2026-06-17');
+  const [startISO, setStartISO] = useState(todayISO());
   const [endISO, setEndISO] = useState('2026-07-31');
   const [weekdays, setWeekdays] = useState<number[]>([2, 4]); // 火木
   const [dayOfMonth, setDayOfMonth] = useState('17');

@@ -42,6 +42,8 @@ export interface InsulinInput {
   needleRemaining: number; // 注入針の残本数
   includeSpareNeedle: boolean; // 予備の注入針を含めるか
   spareNeedleUnits: number; // 予備注入針本数
+  considerExpiry: boolean; // 使用開始後期限を考慮するか
+  expiryDays: number; // 使用開始後使用可能日数
 }
 
 export interface InjectionInfo {
@@ -83,6 +85,13 @@ export interface InsulinResult {
   neededNeedles: number; // 必要注入針本数
   needleRemaining: number;
   shortageNeedles: number; // 追加で必要な注入針本数（0以下なら不要）
+  // 使用開始後期限による廃棄判定
+  considerExpiry: boolean;
+  expiryDays: number;
+  dailyConsumption: number; // 1日消費単位
+  perBottleUsableUnits: number; // 期限内に1本から使用できる単位数
+  perBottleDiscardUnits: number; // 1本あたり廃棄見込み単位数
+  perBottleDiscardDoses: number; // 1本あたり廃棄見込み回数
 }
 
 const SLOT_LABEL_JP = { morning: '朝', noon: '昼', evening: '夕', bedtime: '寝る前' } as const;
@@ -155,10 +164,19 @@ export function simulate(
   return { injectionsDone: done, consumed, unusable, remaining };
 }
 
-function stockPens(input: InsulinInput, extraPens: number): number[] {
-  const pens: number[] = [input.currentPenUnits];
+/**
+ * 在庫のペン列を作る。
+ * 使用開始後期限を考慮する場合、各ボトルは「期限内に使い切れる単位数」までしか
+ * 使えない（超過分は廃棄見込みとして在庫に含めない）。
+ *   期限内使用可能単位数 = 使用開始後使用可能日数 × 1日消費単位
+ *   1本あたり実使用可能単位数 = min(1本あたり単位数, 期限内使用可能単位数)
+ */
+function stockPens(input: InsulinInput, extraPens: number, expiryCap: number): number[] {
+  const effCurrent = Math.min(input.currentPenUnits, expiryCap);
+  const effFull = Math.min(input.unitsPerPen, expiryCap);
+  const pens: number[] = [effCurrent];
   const fulls = input.unusedPens + extraPens;
-  for (let i = 0; i < fulls; i++) pens.push(input.unitsPerPen);
+  for (let i = 0; i < fulls; i++) pens.push(effFull);
   return pens;
 }
 
@@ -172,14 +190,28 @@ export function calcInsulin(input: InsulinInput): InsulinResult {
   const costCycle = injections.map((j) => j.cost);
   const firstInjectionCost = costCycle[0];
 
+  // 1日消費単位（1日分の実消費単位の合計）
+  const dailyConsumption = costCycle.reduce((a, b) => a + b, 0);
+  // 使用開始後期限による1本あたりの実使用可能単位の上限
+  const expiryCap = input.considerExpiry
+    ? input.expiryDays * dailyConsumption
+    : Number.POSITIVE_INFINITY;
+  const perBottleUsableUnits = Math.min(input.unitsPerPen, expiryCap);
+  const perBottleDiscardUnits = input.considerExpiry
+    ? Math.max(0, input.unitsPerPen - perBottleUsableUnits)
+    : 0;
+  // 廃棄見込み回数（1回あたりの平均実消費単位で換算）
+  const avgCostPerInjection = dailyConsumption / perDay;
+  const perBottleDiscardDoses = Math.floor(perBottleDiscardUnits / avgCostPerInjection);
+
   // 必要期間
   const endDate =
     input.visitInclusion === 'includeVisitDay' ? input.nextVisitDate : addDays(input.nextVisitDate, -1);
   const needDays = inclusiveDayCount(input.startDate, endDate); // end<start なら0
   const neededInjections = needDays * perDay;
 
-  // 現在の残量で打てる回数
-  const cap = simulate(stockPens(input, 0), costCycle, null);
+  // 現在の残量で打てる回数（期限考慮後の在庫で計算）
+  const cap = simulate(stockPens(input, 0, expiryCap), costCycle, null);
   const possibleInjections = cap.injectionsDone;
   const unusableUnits = cap.unusable;
   const possibleDays = Math.floor(possibleInjections / perDay);
@@ -191,12 +223,12 @@ export function calcInsulin(input: InsulinInput): InsulinResult {
   if (neededInjections > possibleInjections) {
     while (addPens < 100000) {
       addPens++;
-      if (simulate(stockPens(input, addPens), costCycle, null).injectionsDone >= neededInjections) break;
+      if (simulate(stockPens(input, addPens, expiryCap), costCycle, null).injectionsDone >= neededInjections) break;
     }
   }
 
   // 追加後に余る見込み
-  const totalPens = stockPens(input, addPens);
+  const totalPens = stockPens(input, addPens, expiryCap);
   const totalPossible = simulate(totalPens, costCycle, null).injectionsDone;
   const afterNeeded = simulate(totalPens, costCycle, neededInjections);
   const leftoverInjections = Math.max(0, totalPossible - neededInjections);
@@ -240,6 +272,12 @@ export function calcInsulin(input: InsulinInput): InsulinResult {
     neededNeedles,
     needleRemaining: input.needleRemaining,
     shortageNeedles,
+    considerExpiry: input.considerExpiry,
+    expiryDays: input.expiryDays,
+    dailyConsumption,
+    perBottleUsableUnits,
+    perBottleDiscardUnits,
+    perBottleDiscardDoses,
   };
 }
 
@@ -292,4 +330,17 @@ export function buildInsulinNote(r: InsulinResult): string {
       `1回分としては使用不可として計算しています。`;
   }
   return main;
+}
+
+/** 使用開始後期限による廃棄判定の説明文。考慮しない場合は空文字 */
+export function buildInsulinExpiryNote(r: InsulinResult): string {
+  if (!r.considerExpiry) return '';
+  if (r.perBottleDiscardUnits > 0) {
+    return (
+      `この計算では、インスリン1本を使用開始後${r.expiryDays}日以内に使い切る前提で計算しています。` +
+      `1本${r.unitsPerPen}単位のうち、期限内に使用できる見込みは${r.perBottleUsableUnits}単位です。` +
+      `期限を超えて残る${r.perBottleDiscardUnits}単位は廃棄見込みとして扱い、必要本数の計算には含めていません。`
+    );
+  }
+  return `この使用量では、1本を使用開始後期限（${r.expiryDays}日）内に使い切れる見込みです。`;
 }

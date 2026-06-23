@@ -17,6 +17,11 @@ export function parseDate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** 当日の "YYYY-MM-DD"（入力欄の初期値などに使う） */
+export function todayISO(): string {
+  return toISO(new Date());
+}
+
 /** Date を "YYYY-MM-DD" に変換 */
 export function toISO(d: Date): string {
   const y = d.getFullYear();

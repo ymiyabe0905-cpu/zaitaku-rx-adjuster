@@ -2,11 +2,12 @@ import { useState } from 'react';
 import {
   InsulinInput,
   InsulinMode,
+  buildInsulinExpiryNote,
   buildInsulinNote,
   calcInsulin,
   formatInjections,
 } from '../../lib/insulin';
-import { formatJP, parseDate } from '../../lib/dateUtils';
+import { formatJP, parseDate, todayISO } from '../../lib/dateUtils';
 import {
   DetailBox,
   ErrorBox,
@@ -36,6 +37,9 @@ interface FormState {
   startISO: string;
   visitISO: string;
   needleRemaining: string;
+  considerExpiry: boolean;
+  expiryPreset: '28' | '56' | 'other';
+  expiryOther: string;
 }
 
 const DEFAULT_FORM: FormState = {
@@ -52,9 +56,12 @@ const DEFAULT_FORM: FormState = {
   bedtime: '0',
   includeAirshot: true,
   airshotUnits: '2',
-  startISO: '2026-06-17',
+  startISO: todayISO(),
   visitISO: '2026-07-14',
   needleRemaining: '0',
+  considerExpiry: true,
+  expiryPreset: '28',
+  expiryOther: '28',
 };
 
 export default function InsulinTab() {
@@ -98,6 +105,11 @@ export default function InsulinTab() {
       needleRemaining: Math.floor(num(f.needleRemaining, '注入針の残本数')),
       includeSpareNeedle: false,
       spareNeedleUnits: 0,
+      considerExpiry: f.considerExpiry,
+      expiryDays:
+        f.expiryPreset === 'other'
+          ? Math.floor(num(f.expiryOther, '使用開始後使用可能日数', false))
+          : Number(f.expiryPreset),
     };
   }
 
@@ -222,6 +234,35 @@ export default function InsulinTab() {
         </Field>
       </div>
 
+      {/* 使用開始後期限 */}
+      <h3 className="section-head">⑤ 使用開始後期限（廃棄判定）</h3>
+      <div className="form-row">
+        <Field label="使用開始後期限を考慮する">
+          <label className="check-line">
+            <input
+              type="checkbox"
+              checked={f.considerExpiry}
+              onChange={(e) => set('considerExpiry', e.target.checked)}
+            />
+            考慮する
+          </label>
+        </Field>
+        {f.considerExpiry && (
+          <Field label="使用開始後使用可能日数">
+            <select value={f.expiryPreset} onChange={(e) => set('expiryPreset', e.target.value as FormState['expiryPreset'])}>
+              <option value="28">28日（4週間）</option>
+              <option value="56">56日（8週間）</option>
+              <option value="other">その他</option>
+            </select>
+          </Field>
+        )}
+        {f.considerExpiry && f.expiryPreset === 'other' && (
+          <Field label="日数（手入力）">
+            <input type="number" min={1} value={f.expiryOther} onChange={(e) => set('expiryOther', e.target.value)} />
+          </Field>
+        )}
+      </div>
+
       <GameButton onClick={run}>けいさん</GameButton>
 
       {error && <ErrorBox message={error} />}
@@ -241,6 +282,7 @@ export default function InsulinTab() {
             ]}
           />
           <NoteBox text={buildInsulinNote(result)} />
+          {result.considerExpiry && <NoteBox text={buildInsulinExpiryNote(result)} />}
 
           <DetailBox>
             <ResultGrid>
@@ -280,6 +322,18 @@ export default function InsulinTab() {
                 value={result.shortageNeedles > 0 ? `${result.shortageNeedles}本` : '不要'}
                 accent
               />
+              {/* 使用開始後期限（廃棄判定） */}
+              <ResultItem label="使用開始後期限を考慮" value={result.considerExpiry ? 'する' : 'しない'} />
+              {result.considerExpiry && (
+                <>
+                  <ResultItem label="使用開始後使用可能日数" value={`${result.expiryDays}日`} />
+                  <ResultItem label="1日消費単位" value={`${result.dailyConsumption}単位`} />
+                  <ResultItem label="期限内に1本から使える単位数" value={`${result.perBottleUsableUnits}単位`} />
+                  <ResultItem label="1本あたり廃棄見込み単位数" value={`${result.perBottleDiscardUnits}単位`} />
+                  <ResultItem label="1本あたり廃棄見込み回数" value={`${result.perBottleDiscardDoses}回`} />
+                  <ResultItem label="期限考慮後の追加必要本数" value={`${result.addPens}本`} accent />
+                </>
+              )}
             </ResultGrid>
           </DetailBox>
 
@@ -288,6 +342,12 @@ export default function InsulinTab() {
           </div>
           <div className="sub-notice">
             ※ スライディングスケールや血糖値に応じた可変単位の指示には、今回の自動計算は対応していません。
+          </div>
+          <div className="sub-notice">
+            ※ この計算は、1本ごとの使用開始日を管理するものではありません。1本を使い切るまでに使用開始後期限を超える場合、超過分を廃棄見込みとして扱う簡易計算です。
+          </div>
+          <div className="sub-notice">
+            ※ 使用開始後の使用可能期間は製剤ごとに異なります。対象製剤の添付文書・薬剤情報・施設での管理方法を必ず確認してください。
           </div>
         </>
       )}

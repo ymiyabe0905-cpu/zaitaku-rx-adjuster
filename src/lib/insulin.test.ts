@@ -24,6 +24,8 @@ function baseInput(over: Partial<InsulinInput>): InsulinInput {
     needleRemaining: 0,
     includeSpareNeedle: false,
     spareNeedleUnits: 2,
+    considerExpiry: true,
+    expiryDays: 28,
     ...over,
   };
 }
@@ -123,6 +125,54 @@ describe('注入針（予備あり）と不足判定', () => {
     );
     expect(r.neededNeedles).toBe(r.neededInjections + 2);
     expect(r.shortageNeedles).toBe(r.neededNeedles - 5);
+  });
+});
+
+describe('使用開始後期限による廃棄判定', () => {
+  // 300単位・1回4＋空打ち2＝6単位・1日1回・期限28日
+  // → 28日で168単位使用可能、132単位は廃棄見込み
+  const input = baseInput({
+    unitsPerPen: 300,
+    unusedPens: 1,
+    currentPenUnits: 0,
+    fixedDose: 4,
+    airshotUnits: 2,
+    injectionsPerDay: 1,
+    considerExpiry: true,
+    expiryDays: 28,
+  });
+  const r = calcInsulin(input);
+
+  it('1日消費単位は6単位', () => expect(r.dailyConsumption).toBe(6));
+  it('期限内に1本から使えるのは168単位', () => expect(r.perBottleUsableUnits).toBe(168));
+  it('1本あたり廃棄見込みは132単位・22回', () => {
+    expect(r.perBottleDiscardUnits).toBe(132);
+    expect(r.perBottleDiscardDoses).toBe(22);
+  });
+  it('未使用1本(=168単位)で打てるのは28回（300単位ぶんは打てない）', () => {
+    expect(r.possibleInjections).toBe(28);
+  });
+
+  it('期限を考慮しなければ廃棄は発生しない', () => {
+    const r2 = calcInsulin(baseInput({
+      unitsPerPen: 300, unusedPens: 1, currentPenUnits: 0,
+      fixedDose: 4, airshotUnits: 2, injectionsPerDay: 1,
+      considerExpiry: false, expiryDays: 28,
+    }));
+    expect(r2.perBottleDiscardUnits).toBe(0);
+    expect(r2.perBottleUsableUnits).toBe(300);
+    expect(r2.possibleInjections).toBe(50); // floor(300/6)
+  });
+
+  it('使い切れる使用量なら廃棄0', () => {
+    // 1日3回・cost6 → daily18, 28日で504単位 > 300 → 上限は300（廃棄なし）
+    const r3 = calcInsulin(baseInput({
+      unitsPerPen: 300, unusedPens: 1, currentPenUnits: 0,
+      fixedDose: 4, airshotUnits: 2, injectionsPerDay: 3,
+      considerExpiry: true, expiryDays: 28,
+    }));
+    expect(r3.perBottleDiscardUnits).toBe(0);
+    expect(r3.perBottleUsableUnits).toBe(300);
   });
 });
 

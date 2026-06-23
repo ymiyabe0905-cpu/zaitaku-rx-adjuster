@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { buildDailyAdjustNote, calcDailyAdjust } from '../../lib/calc';
-import { isOnOrBefore, parseDate, formatJP } from '../../lib/dateUtils';
+import { isOnOrBefore, parseDate, formatJP, todayISO } from '../../lib/dateUtils';
 import { SLOT_LABEL, Slot, formatSlots, sortSlots } from '../../lib/timing';
 import {
   DetailBox,
@@ -23,13 +23,13 @@ import {
  */
 export default function TotalTab() {
   // 追加薬
-  const [addStartISO, setAddStartISO] = useState('2026-06-17');
+  const [addStartISO, setAddStartISO] = useState(todayISO());
   const [addSlots, setAddSlots] = useState<Slot[]>(['morning', 'noon', 'evening']);
   const [addStartSlot, setAddStartSlot] = useState<Slot>('evening');
   const [perDose, setPerDose] = useState('1');
   const [residual, setResidual] = useState('0');
   // 定期薬
-  const [teikiStartISO, setTeikiStartISO] = useState('2026-06-17');
+  const [teikiStartISO, setTeikiStartISO] = useState(todayISO());
   const [teikiSlots, setTeikiSlots] = useState<Slot[]>(['morning', 'noon', 'evening']);
   const [teikiStartSlot, setTeikiStartSlot] = useState<Slot>('evening');
   const [teikiDays, setTeikiDays] = useState('14');

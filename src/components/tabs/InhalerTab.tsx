@@ -10,7 +10,7 @@ import {
   calcRegular,
   fmtNum,
 } from '../../lib/inhaler';
-import { formatJP, parseDate } from '../../lib/dateUtils';
+import { formatJP, parseDate, todayISO } from '../../lib/dateUtils';
 import {
   DetailBox,
   ErrorBox,
@@ -80,7 +80,7 @@ function RegularMode() {
   const [currentKit, setCurrentKit] = useState('20');
   const [perDose, setPerDose] = useState('1');
   const [timesPerDay, setTimesPerDay] = useState('2');
-  const [startISO, setStartISO] = useState('2026-06-17');
+  const [startISO, setStartISO] = useState(todayISO());
   const [visitISO, setVisitISO] = useState('2026-07-14');
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcRegular> | null>(null);

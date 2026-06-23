@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { calcEndDate, nthDoseEvent } from '../../lib/calc';
-import { formatJP, parseDate } from '../../lib/dateUtils';
+import { formatJP, parseDate, todayISO } from '../../lib/dateUtils';
 import { SLOT_LABEL, Slot, dosesPerDay, formatSlots, sortSlots } from '../../lib/timing';
 import {
   DetailBox,
@@ -17,7 +17,7 @@ import {
 
 /** 機能1: 開始日 + 日数 → 終了日（開始日=1日目）。用法を指定すると飲み終わり日時も表示 */
 export default function EndDateTab() {
-  const [startISO, setStartISO] = useState('2026-06-17');
+  const [startISO, setStartISO] = useState(todayISO());
   const [days, setDays] = useState('14');
   const [slots, setSlots] = useState<Slot[]>(['morning', 'noon', 'evening']);
   const [startSlot, setStartSlot] = useState<Slot>('morning');
