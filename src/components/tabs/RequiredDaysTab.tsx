@@ -9,7 +9,6 @@ import {
   GameButton,
   HeroResult,
   Panel,
-  QuickDays,
   ResultGrid,
   ResultItem,
   SlotPicker,
@@ -77,9 +76,6 @@ export default function RequiredDaysTab() {
         </Field>
         <Field label="合わせたい終了日">
           <input type="date" value={endISO} onChange={(e) => setEndISO(e.target.value)} />
-        </Field>
-        <Field label="クイック設定（開始日＋）">
-          <QuickDays baseISO={startISO} onPick={setEndISO} />
         </Field>
         <Field label="開始タイミング">
           <SlotSelect slots={slots} value={startSlot} onChange={setStartSlot} />
