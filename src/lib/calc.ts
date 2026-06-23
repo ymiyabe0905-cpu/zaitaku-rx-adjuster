@@ -138,11 +138,11 @@ export interface ResidualUsageResult {
 }
 
 export function calcResidualUsage(
-  slots: Slot[],
+  dosesPerDayCount: number,
   perDose: number,
   residual: number,
 ): ResidualUsageResult {
-  const dpd = dosesPerDay(slots);
+  const dpd = dosesPerDayCount;
   const usableDoses = Math.floor(residual / perDose);
   const leftoverTablets = residual - usableDoses * perDose; // 1回分に満たない端数(錠)
   const fullDays = Math.floor(usableDoses / dpd);
