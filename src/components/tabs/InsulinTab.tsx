@@ -71,8 +71,8 @@ export default function InsulinTab() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcInsulin> | null>(null);
 
-  // 用法から1日使用量(U)とパッケージ量(Pk)を求める（次回処方依頼モード用）
-  function computeUsage(): { dailyUse: number; packageSize: number } {
+  // 用法から1日使用量(U)・パッケージ量(Pk)・訪問時残数(単位)を求める（次回処方依頼モード用）
+  function computeUsage(): { dailyUse: number; packageSize: number; remainingUnits: number } {
     const unitsPerPen = f.penPreset === 'other' ? Number(f.penOther) : Number(f.penPreset);
     if (!Number.isFinite(unitsPerPen) || unitsPerPen <= 0)
       throw new Error('1本あたり単位数を正しく入力してください');
@@ -87,7 +87,11 @@ export default function InsulinTab() {
       dailyUse = slots.filter((u) => u > 0).reduce((sum, u) => sum + (u + air), 0);
       if (dailyUse <= 0) throw new Error('朝・昼・夕・寝る前のいずれかに投与量を入力してください');
     }
-    return { dailyUse, packageSize: unitsPerPen };
+    // 訪問時の残数 = 未使用本数 × 1本単位数 ＋ 使用中ペンの残単位
+    const unused = Math.max(0, Math.floor(Number(f.unusedPens) || 0));
+    const curr = Math.max(0, Math.floor(Number(f.currentPenUnits) || 0));
+    const remainingUnits = unused * unitsPerPen + curr;
+    return { dailyUse, packageSize: unitsPerPen, remainingUnits };
   }
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {

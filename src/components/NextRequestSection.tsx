@@ -22,11 +22,10 @@ export function NextRequestSection({
   baseUnit,
   pkg,
 }: {
-  compute: () => { dailyUse: number; packageSize: number };
+  compute: () => { dailyUse: number; packageSize: number; remainingUnits: number };
   baseUnit: string; // 単位 / 吸入 / 滴
   pkg: string; // 本 / キット
 }) {
-  const [remainPkg, setRemainPkg] = useState(''); // 初期は空
   const [rxPkg, setRxPkg] = useState('1');
   const [visitISO, setVisitISO] = useState(todayISO());
   const [nextVisitISO, setNextVisitISO] = useState(todayISO());
@@ -36,19 +35,17 @@ export function NextRequestSection({
   function run() {
     setError('');
     try {
-      const { dailyUse, packageSize } = compute(); // 用法の検証もここで行われる
+      const { dailyUse, packageSize, remainingUnits } = compute(); // 用法・在庫の検証もここ
       if (!visitISO || !nextVisitISO) throw new Error('今回訪問日・次回訪問日を入力してください');
       const cycleDays = diffDays(parseDate(visitISO), parseDate(nextVisitISO));
       if (cycleDays <= 0) throw new Error('次回訪問日は今回訪問日より後にしてください');
-      const remaining = Number(remainPkg);
       const prescribed = Number(rxPkg);
-      if (!Number.isFinite(remaining) || remaining < 0) throw new Error(`訪問時の残数（${pkg}）を正しく入力してください`);
       if (!Number.isFinite(prescribed) || prescribed < 0) throw new Error(`今回処方数（${pkg}）を正しく入力してください`);
       setResult(
         calcNextRequest({
           dailyUse,
           packageSize,
-          remainingPackages: remaining,
+          remainingUnits,
           prescribedPackages: prescribed,
           cycleDays,
         }),
@@ -62,12 +59,10 @@ export function NextRequestSection({
   return (
     <>
       <p className="lead">
-        訪問時の残数（{pkg}）と今回処方数（{pkg}）から、次サイクル（今回と同じ間隔）に向けて次回処方で依頼すべき{pkg}数を概算します。
+        訪問時の残数は上の在庫入力（未使用＋使用中の残）をそのまま使います。今回処方数（{pkg}）と訪問日を入れると、
+        次サイクル（今回と同じ間隔）に向けて次回処方で依頼すべき{pkg}数を概算します。
       </p>
       <div className="form-row">
-        <Field label={`訪問時の残数（${pkg}）`} hint="未入力は0として計算（小数可）">
-          <input type="number" min={0} step="0.5" value={remainPkg} onChange={(e) => setRemainPkg(e.target.value)} />
-        </Field>
         <Field label={`今回処方数（${pkg}）`}>
           <input type="number" min={0} value={rxPkg} onChange={(e) => setRxPkg(e.target.value)} />
         </Field>
@@ -112,6 +107,8 @@ export function NextRequestSection({
             <ResultGrid>
               <ResultItem label="1日使用量" value={`${result.dailyUse}${baseUnit}`} />
               <ResultItem label={`1${pkg}あたりの量`} value={`${result.packageSize}${baseUnit}`} />
+              <ResultItem label="訪問時の残数" value={`${result.remainingUnits}${baseUnit}`} />
+              <ResultItem label="今回処方" value={`${result.prescribedUnits}${baseUnit}`} />
               <ResultItem label="合計量（残数＋今回処方）" value={`${result.totalUnits}${baseUnit}`} />
               <ResultItem label="今サイクル消費量" value={`${result.consumeThisCycle}${baseUnit}`} />
               <ResultItem label="次回訪問時の予測残数" value={`${result.predictedRemainUnits}${baseUnit}`} />

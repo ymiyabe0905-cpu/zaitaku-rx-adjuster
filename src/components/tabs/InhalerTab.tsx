@@ -87,11 +87,15 @@ function RegularMode() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcRegular> | null>(null);
 
-  // 用法から1日使用吸入数(U)と1キット総吸入数(Pk)を求める（次回処方依頼モード用）
-  function computeUsage(): { dailyUse: number; packageSize: number } {
+  // 用法から1日使用吸入数(U)・1キット総吸入数(Pk)・訪問時残数(吸入)を求める（次回処方依頼モード用）
+  function computeUsage(): { dailyUse: number; packageSize: number; remainingUnits: number } {
     const packageSize = kitUnits(kitPreset, kitOther);
     const dailyUse = Math.floor(toNum(perDose, '1回あたり吸入数', false)) * Number(timesPerDay);
-    return { dailyUse, packageSize };
+    // 訪問時の残数 = 未使用キット × 1キット総吸入数 ＋ 使用中キットの残吸入数
+    const unused = Math.max(0, Math.floor(Number(unusedKits) || 0));
+    const curr = Math.max(0, Math.floor(Number(currentKit) || 0));
+    const remainingUnits = unused * packageSize + curr;
+    return { dailyUse, packageSize, remainingUnits };
   }
 
   function run() {

@@ -18,7 +18,7 @@
 export interface NextRequestInput {
   dailyUse: number; // 1日使用量（基本単位/日）
   packageSize: number; // 1パッケージあたりの基本単位（本/キットの中身）
-  remainingPackages: number; // 訪問時の残数（パッケージ数・小数可）
+  remainingUnits: number; // 訪問時の残数（基本単位。未使用本数×Pk＋使用中の残 から算出）
   prescribedPackages: number; // 今回処方数（パッケージ数）
   cycleDays: number; // 今サイクル日数 D（＝次サイクル日数）
 }
@@ -27,6 +27,8 @@ export interface NextRequestResult {
   dailyUse: number;
   packageSize: number;
   cycleDays: number;
+  remainingUnits: number; // 訪問時の残数（基本単位）
+  prescribedUnits: number; // 今回処方（基本単位）
   totalUnits: number; // 合計量（残数＋今回処方）
   consumeThisCycle: number; // 今サイクル消費量
   predictedRemainUnits: number; // 次回訪問時の予測残数
@@ -40,7 +42,8 @@ export function calcNextRequest(input: NextRequestInput): NextRequestResult {
   if (input.packageSize <= 0) throw new Error('1パッケージあたりの量が0です。');
   if (input.cycleDays <= 0) throw new Error('今回訪問日〜次回訪問日の日数が0以下です。');
 
-  const totalUnits = (input.remainingPackages + input.prescribedPackages) * input.packageSize;
+  const prescribedUnits = input.prescribedPackages * input.packageSize;
+  const totalUnits = input.remainingUnits + prescribedUnits;
   const consumeThisCycle = input.cycleDays * input.dailyUse;
   const predictedRemainUnits = Math.max(0, totalUnits - consumeThisCycle);
   const nextNeedUnits = input.cycleDays * input.dailyUse;
@@ -51,6 +54,8 @@ export function calcNextRequest(input: NextRequestInput): NextRequestResult {
     dailyUse: input.dailyUse,
     packageSize: input.packageSize,
     cycleDays: input.cycleDays,
+    remainingUnits: input.remainingUnits,
+    prescribedUnits,
     totalUnits,
     consumeThisCycle,
     predictedRemainUnits,

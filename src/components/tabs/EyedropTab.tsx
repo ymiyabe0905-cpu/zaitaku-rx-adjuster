@@ -229,7 +229,12 @@ export default function EyedropTab() {
             const packageSize = dropsPerBottle(preset, volumeMl);
             const eyes = target === 'both' ? 2 : 1;
             const dailyUse = eyes * 1 * Number(timesPerDay);
-            return { dailyUse, packageSize };
+            // 訪問時の残数 = 未使用本数 × 1本換算滴数 ＋ 使用中ボトルの残滴数（割合から）
+            const factor = ratioKey === '' ? 0 : RATIO_OPTIONS.find((o) => o.key === ratioKey)?.factor ?? 0;
+            const currentBottleDrops = Math.floor(packageSize * factor);
+            const unused = Math.max(0, Math.floor(Number(unusedBottles) || 0));
+            const remainingUnits = unused * packageSize + currentBottleDrops;
+            return { dailyUse, packageSize, remainingUnits };
           }}
         />
       )}
