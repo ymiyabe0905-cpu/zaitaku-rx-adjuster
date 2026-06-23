@@ -25,13 +25,13 @@ export default function TotalTab() {
   // 追加薬
   const [addStartISO, setAddStartISO] = useState(todayISO());
   const [addSlots, setAddSlots] = useState<Slot[]>(['morning', 'noon', 'evening']);
-  const [addStartSlot, setAddStartSlot] = useState<Slot>('evening');
+  const [addStartSlot, setAddStartSlot] = useState<Slot>('morning');
   const [perDose, setPerDose] = useState('1');
   const [residual, setResidual] = useState('0');
   // 定期薬
   const [teikiStartISO, setTeikiStartISO] = useState(todayISO());
   const [teikiSlots, setTeikiSlots] = useState<Slot[]>(['morning', 'noon', 'evening']);
-  const [teikiStartSlot, setTeikiStartSlot] = useState<Slot>('evening');
+  const [teikiStartSlot, setTeikiStartSlot] = useState<Slot>('morning');
   const [teikiDays, setTeikiDays] = useState('14');
 
   const [error, setError] = useState('');
