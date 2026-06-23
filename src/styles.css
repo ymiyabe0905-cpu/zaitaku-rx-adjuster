@@ -1,0 +1,698 @@
+/* =====================================================================
+   在宅処方アジャスター - 8ビット・レトロゲーム風スタイル
+   方針: 雰囲気は楽しく、入力欄と結果表示は業務で読みやすく。
+   （公式キャラ・ロゴ・ステージの再現はしない。あくまで雰囲気のみ）
+   ===================================================================== */
+
+:root {
+  --sky-top: #5c94fc; /* 明るい青空 */
+  --sky-bottom: #9ad0ff;
+  --block: #e9a23b; /* ブロックのオレンジ茶 */
+  --block-dark: #b5701b;
+  --brick: #c84c0c;
+  --coin: #fbd000;
+  --ink: #1a1a2e;
+  --panel-bg: #fffef7;
+  --green: #3aa34a;
+  --green-dark: #1f7a2e;
+  --red: #e03b3b;
+  --red-dark: #a81e1e;
+  --pixel-font: 'Press Start 2P', 'DotGothic16', 'MS Gothic', monospace;
+  --body-font: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--body-font);
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 70%, #cdeb8b 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.app {
+  position: relative;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 16px 14px 0;
+}
+
+/* ---------- 背景の雲（ドット風の角ばった雲） ---------- */
+.sky-deco {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.cloud {
+  position: absolute;
+  width: 64px;
+  height: 24px;
+  background: #fff;
+  box-shadow:
+    16px -12px 0 0 #fff,
+    32px -12px 0 0 #fff,
+    16px -24px 0 0 #fff,
+    -8px 0 0 0 #cfe8ff,
+    72px 0 0 0 #cfe8ff;
+  border-radius: 2px;
+  opacity: 0.9;
+}
+.cloud-1 { top: 60px; left: 8%; }
+.cloud-2 { top: 140px; right: 10%; transform: scale(1.4); }
+.cloud-3 { top: 280px; left: 20%; transform: scale(0.8); }
+
+.app > *:not(.sky-deco) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- 変更ログ ボタン（右上） ---------- */
+.log-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  font-family: var(--body-font);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--ink);
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  padding: 7px 10px;
+  box-shadow: inset -2px -2px 0 #c9c9c9, 2px 2px 0 rgba(0, 0, 0, 0.25);
+}
+.log-btn:active { transform: translate(1px, 1px); }
+
+/* ---------- 変更ログ モーダル ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 12px;
+  overflow-y: auto;
+}
+.modal {
+  background: var(--panel-bg);
+  border: 4px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.35);
+  width: 100%;
+  max-width: 560px;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--pixel-font);
+  font-size: 13px;
+  color: #fff;
+  background: var(--brick);
+  border-bottom: 4px solid var(--ink);
+  padding: 12px 14px;
+  text-shadow: 2px 2px 0 #7a2604;
+}
+.modal-close {
+  cursor: pointer;
+  font-family: var(--body-font);
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--coin);
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  width: 26px;
+  height: 26px;
+  box-shadow: inset -2px -2px 0 #c79a00;
+}
+.modal-body {
+  padding: 14px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.log-entry { margin-bottom: 8px; }
+.log-version {
+  font-size: 15px;
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  background: #fff7d6;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+}
+.log-label { font-size: 13px; }
+.log-date { float: right; font-size: 12px; color: #777; font-weight: 400; }
+.log-section { margin-bottom: 12px; }
+.log-section-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--brick);
+  margin-bottom: 4px;
+}
+.log-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.log-list li { margin-bottom: 2px; }
+
+/* ---------- ヘッダー / タイトル ---------- */
+.app-header {
+  text-align: center;
+  margin: 8px 0 14px;
+}
+.title {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+.title-block {
+  font-family: var(--pixel-font);
+  font-size: 22px;
+  background: var(--block);
+  color: #fff;
+  padding: 10px 8px;
+  border: 3px solid var(--ink);
+  box-shadow:
+    inset -3px -3px 0 var(--block-dark),
+    inset 3px 3px 0 #ffd98a,
+    3px 3px 0 rgba(0, 0, 0, 0.3);
+  text-shadow: 2px 2px 0 var(--block-dark);
+}
+.title-gap { width: 6px; }
+.title-text {
+  font-family: var(--pixel-font);
+  font-size: 18px;
+  color: #fff;
+  background: var(--brick);
+  padding: 12px 10px;
+  border: 3px solid var(--ink);
+  box-shadow:
+    inset -3px -3px 0 #8a2d05,
+    3px 3px 0 rgba(0, 0, 0, 0.3);
+  text-shadow: 2px 2px 0 #7a2604;
+  letter-spacing: 1px;
+}
+.subtitle {
+  margin: 10px 0 0;
+  color: #173a6b;
+  font-weight: 700;
+  text-shadow: 1px 1px 0 #fff;
+}
+
+/* ---------- 注意書き ---------- */
+.notice {
+  background: #fff4c2;
+  border: 3px solid var(--ink);
+  box-shadow: inset -3px -3px 0 #e8d27a, 3px 3px 0 rgba(0, 0, 0, 0.25);
+  color: #7a4b00;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border-radius: 2px;
+}
+
+/* ---------- タブ ---------- */
+/* グリッドで全タブを同じ幅に統一。4列で並べ、増えても自動で次の行へ整列する */
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.tab {
+  font-family: var(--body-font);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  background: #fff;
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  padding: 8px 10px;
+  border-radius: 2px;
+  box-shadow: inset -3px -3px 0 #c9c9c9, 2px 2px 0 rgba(0, 0, 0, 0.2);
+  transition: transform 0.05s;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab:hover { transform: translateY(-1px); }
+.tab--active {
+  background: var(--coin);
+  box-shadow: inset -3px -3px 0 #c79a00, inset 3px 3px 0 #fff3a8, 2px 2px 0 rgba(0, 0, 0, 0.25);
+}
+.tab-icon { margin-right: 4px; }
+
+/* ---------- パネル ---------- */
+.panel {
+  background: var(--panel-bg);
+  border: 4px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.panel-title {
+  font-family: var(--pixel-font);
+  font-size: 14px;
+  margin: 0;
+  padding: 12px 14px;
+  color: #fff;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--brick) 0,
+    var(--brick) 22px,
+    #b3430a 22px,
+    #b3430a 24px
+  );
+  border-bottom: 4px solid var(--ink);
+  text-shadow: 2px 2px 0 #7a2604;
+  line-height: 1.6;
+}
+.panel-icon { margin-right: 8px; }
+.panel-body { padding: 16px 14px 18px; }
+
+.lead {
+  margin: 0 0 14px;
+  background: #eef6ff;
+  border-left: 6px solid var(--sky-top);
+  padding: 8px 10px;
+  border-radius: 2px;
+  font-size: 14px;
+}
+
+/* ---------- 入力フォーム ---------- */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+.field-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #333;
+}
+.field-hint {
+  font-size: 12px;
+  color: #777;
+}
+.field input,
+.field select {
+  font-family: var(--body-font);
+  font-size: 15px;
+  padding: 9px 10px;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: inset 2px 2px 0 #e7e7e7;
+}
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--brick);
+  box-shadow: inset 2px 2px 0 #ffe0cc, 0 0 0 2px #ffb38a;
+}
+
+/* ---------- ボタン（スタートボタン風） ---------- */
+.game-btn {
+  font-family: var(--pixel-font);
+  font-size: 13px;
+  cursor: pointer;
+  color: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  padding: 12px 18px;
+  margin: 4px 0;
+  letter-spacing: 1px;
+  transition: transform 0.05s;
+}
+.game-btn:active { transform: translate(2px, 2px); }
+.game-btn--primary {
+  background: var(--green);
+  box-shadow: inset -3px -3px 0 var(--green-dark), inset 3px 3px 0 #7fd98c, 3px 3px 0 rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 0 var(--green-dark);
+}
+.game-btn--sub {
+  background: var(--sky-top);
+  box-shadow: inset -3px -3px 0 #2f5fc0, 3px 3px 0 rgba(0, 0, 0, 0.3);
+}
+.game-btn--sample {
+  font-family: var(--body-font);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--coin);
+  padding: 8px 12px;
+  box-shadow: inset -2px -2px 0 #c79a00, inset 2px 2px 0 #fff3a8, 2px 2px 0 rgba(0, 0, 0, 0.25);
+  text-shadow: none;
+  letter-spacing: 0;
+}
+.sample-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+/* ---------- チェックボックス行 ---------- */
+.check-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  padding: 9px 0;
+}
+.check-line input {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---------- 補足注意（インスリン等） ---------- */
+.sub-notice {
+  margin-top: 10px;
+  background: #fff4c2;
+  border: 2px solid #d8b94a;
+  border-radius: 2px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #7a4b00;
+  line-height: 1.7;
+}
+
+/* ---------- モード切替（サブタブ） ---------- */
+.mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.mode-btn {
+  font-family: var(--body-font);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  background: #fff;
+  border: 3px solid var(--ink);
+  padding: 7px 12px;
+  border-radius: 2px;
+  box-shadow: inset -2px -2px 0 #ccc;
+}
+.mode-btn.is-active {
+  background: var(--green);
+  color: #fff;
+  box-shadow: inset -2px -2px 0 var(--green-dark);
+}
+
+/* ---------- 曜日ピッカー ---------- */
+.weekday-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.wd-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset -2px -2px 0 #ddd;
+}
+.wd-chip input { display: none; }
+.wd-chip.is-on {
+  background: var(--coin);
+  box-shadow: inset -2px -2px 0 #c79a00, inset 2px 2px 0 #fff3a8;
+}
+
+/* ---------- セクション見出し（追加薬/定期薬） ---------- */
+.section-head {
+  font-size: 14px;
+  margin: 18px 0 10px;
+  padding: 6px 10px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-left: 8px solid var(--brick);
+  border-radius: 2px;
+  box-shadow: inset -2px -2px 0 #e3e3e3;
+}
+
+/* ---------- 用法ピッカー（スロット選択） ---------- */
+.slot-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.slot-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 38px;
+  padding: 0 8px;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset -2px -2px 0 #ddd;
+}
+.slot-chip input { display: none; }
+.slot-chip.is-on {
+  background: var(--coin);
+  box-shadow: inset -2px -2px 0 #c79a00, inset 2px 2px 0 #fff3a8;
+}
+
+/* ---------- 重要指標（ヒーロー表示） ---------- */
+.hero-result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.hero-item {
+  flex: 1 1 150px;
+  background: var(--coin);
+  border: 4px solid var(--ink);
+  border-radius: 4px;
+  box-shadow:
+    inset -4px -4px 0 #c79a00,
+    inset 4px 4px 0 #fff3a8,
+    3px 3px 0 rgba(0, 0, 0, 0.3);
+  padding: 14px 10px;
+  text-align: center;
+}
+.hero-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.hero-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #7a4b00;
+  margin-top: 6px;
+}
+
+/* ---------- 計算内容（折りたたみ） ---------- */
+.detail-box {
+  margin-top: 16px;
+  border: 3px solid #c3d6f0;
+  border-radius: 4px;
+  background: #f7fbff;
+}
+.detail-box > summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  color: #173a6b;
+  padding: 10px 12px;
+  list-style: none;
+}
+.detail-box > summary::-webkit-details-marker { display: none; }
+.detail-box > summary::before { content: '▸ '; }
+.detail-box[open] > summary::before { content: '▾ '; }
+.detail-body { padding: 0 12px 12px; }
+.detail-body .result-grid { margin-top: 0; }
+
+/* ---------- 結果表示 ---------- */
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f3f8ff;
+  border: 2px solid #c3d6f0;
+  border-radius: 2px;
+  padding: 8px 10px;
+}
+.result-item--accent {
+  background: #fff7d6;
+  border-color: var(--coin);
+  box-shadow: inset -2px -2px 0 #f0dd8a;
+}
+.result-coin {
+  color: var(--coin);
+  text-shadow: 1px 1px 0 #b58900;
+  font-size: 14px;
+}
+.result-item--accent .result-coin { color: var(--brick); text-shadow: none; }
+.result-label {
+  font-size: 13px;
+  color: #555;
+  flex: 1;
+}
+.result-value {
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+/* ---------- 服用予定日一覧 ---------- */
+.list-title {
+  font-size: 14px;
+  margin: 18px 0 8px;
+  padding-left: 8px;
+  border-left: 6px solid var(--brick);
+}
+.date-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  padding: 5px 9px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: inset -2px -2px 0 #e3e3e3;
+}
+.chip-no {
+  background: var(--brick);
+  color: #fff;
+  font-size: 11px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+.empty-note {
+  color: #777;
+  font-style: normal;
+}
+
+/* ---------- 参考文ボックス ---------- */
+.note-box {
+  margin-top: 18px;
+  background: #eafbe7;
+  border: 3px solid var(--green-dark);
+  border-radius: 2px;
+  box-shadow: inset -3px -3px 0 #c6ebbf;
+  overflow: hidden;
+}
+.note-head {
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+  padding: 6px 10px;
+  font-size: 13px;
+  text-shadow: 1px 1px 0 var(--green-dark);
+}
+.note-text {
+  margin: 0;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+/* ---------- エラー ---------- */
+.error-box {
+  margin-top: 12px;
+  background: #ffe3e3;
+  border: 3px solid var(--red-dark);
+  color: var(--red-dark);
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 2px;
+}
+
+/* ---------- フッター（地面風） ---------- */
+.app-footer {
+  margin-top: 8px;
+  padding: 16px 10px 24px;
+  text-align: center;
+  font-size: 12px;
+  color: #2b4a16;
+  position: relative;
+}
+.ground-tile {
+  display: block;
+  height: 16px;
+  margin-bottom: 10px;
+  background: repeating-linear-gradient(
+      90deg,
+      #c8741f 0,
+      #c8741f 14px,
+      #a85c12 14px,
+      #a85c12 16px
+    );
+  border-top: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+}
+
+/* ---------- レスポンシブ ---------- */
+@media (max-width: 560px) {
+  .tabs { grid-template-columns: repeat(2, 1fr); }
+  .title-block { font-size: 16px; padding: 7px 6px; }
+  .title-text { font-size: 13px; }
+  .panel-title { font-size: 12px; }
+  .game-btn { font-size: 12px; }
+}
