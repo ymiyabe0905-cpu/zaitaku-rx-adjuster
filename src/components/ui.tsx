@@ -3,32 +3,46 @@
  * 業務で読みやすいよう、入力欄・結果表示はシンプルに保つ。
  */
 import { ReactNode } from 'react';
-import { addDays, formatJP, parseDate, toISO, todayISO } from '../lib/dateUtils';
+import { addDays, addMonths, formatJP, parseDate, toISO, todayISO } from '../lib/dateUtils';
 import { SLOT_LABEL, SLOT_ORDER, Slot, sortSlots } from '../lib/timing';
 
+/** クイック設定の1項目（日数 or 月数） */
+export interface QuickItem {
+  label: string;
+  days?: number;
+  months?: number;
+}
+
 /**
- * クイック日付ボタン（基準日 + N日 をセット）。
- * 持たせたい日・次回訪問日などを「開始日＋14/21/28日」で素早く設定する。
+ * クイック日付ボタン（基準日 + N日／+Nか月 をセット）。
+ * 既定は「＋14/21/28日」。items を渡すと任意のプリセット（月数など）にできる。
  */
 export function QuickDays({
   baseISO,
   onPick,
   days = [14, 21, 28],
+  items,
 }: {
   baseISO: string;
   onPick: (iso: string) => void;
   days?: number[];
+  items?: QuickItem[];
 }) {
+  const list: QuickItem[] = items ?? days.map((n) => ({ label: `＋${n}日`, days: n }));
   return (
     <div className="quick-row">
-      {days.map((n) => (
+      {list.map((it, i) => (
         <button
-          key={n}
+          key={i}
           type="button"
           className="quick-btn"
-          onClick={() => onPick(toISO(addDays(parseDate(baseISO || todayISO()), n)))}
+          onClick={() => {
+            const base = parseDate(baseISO || todayISO());
+            const next = it.months != null ? addMonths(base, it.months) : addDays(base, it.days ?? 0);
+            onPick(toISO(next));
+          }}
         >
-          ＋{n}日
+          {it.label}
         </button>
       ))}
     </div>

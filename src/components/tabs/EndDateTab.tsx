@@ -68,6 +68,15 @@ export default function EndDateTab() {
         <Field label="開始タイミング">
           <SlotSelect slots={slots} value={startSlot} onChange={setStartSlot} />
         </Field>
+        <Field label="クイック設定（日数）">
+          <div className="quick-row">
+            {[14, 21, 28].map((n) => (
+              <button key={n} type="button" className="quick-btn" onClick={() => setDays(String(n))}>
+                {n}日
+              </button>
+            ))}
+          </div>
+        </Field>
       </div>
       <Field label="用法（朝・昼・夕・就寝前）" hint={slots.length ? `現在: ${formatSlots(slots)}（1日${slots.length}回）` : ''}>
         <SlotPicker slots={slots} onChange={changeSlots} />

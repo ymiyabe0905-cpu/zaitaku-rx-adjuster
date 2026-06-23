@@ -35,6 +35,11 @@ export function addDays(d: Date, n: number): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 }
 
+/** n か月後（暦月ベース）。月末日の調整は JS の Date 仕様に従う */
+export function addMonths(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+}
+
 /** 同じ日付かどうか */
 export function isSameDate(a: Date, b: Date): boolean {
   return (

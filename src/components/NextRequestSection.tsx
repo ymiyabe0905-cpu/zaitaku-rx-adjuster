@@ -10,6 +10,7 @@ import {
   HeroResult,
   NoteBox,
   QuickDays,
+  QuickItem,
   ResultGrid,
   ResultItem,
 } from './ui';
@@ -23,10 +24,12 @@ export function NextRequestSection({
   compute,
   baseUnit,
   pkg,
+  quickItems,
 }: {
   compute: () => { dailyUse: number; packageSize: number; remainingUnits: number };
   baseUnit: string; // 単位 / 吸入 / 滴
   pkg: string; // 本 / キット
+  quickItems?: QuickItem[]; // クイック設定のプリセット（省略時は＋14/21/28日）
 }) {
   const [rxPkg, setRxPkg] = useState('1');
   const [visitISO, setVisitISO] = useState(todayISO());
@@ -77,7 +80,7 @@ export function NextRequestSection({
           <input type="date" value={nextVisitISO} onChange={(e) => setNextVisitISO(e.target.value)} />
         </Field>
         <Field label="クイック設定（次回訪問日）">
-          <QuickDays baseISO={visitISO} onPick={setNextVisitISO} />
+          <QuickDays baseISO={visitISO} onPick={setNextVisitISO} items={quickItems} />
         </Field>
       </div>
 

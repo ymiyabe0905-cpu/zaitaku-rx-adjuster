@@ -11,6 +11,7 @@ import {
   HeroResult,
   NoteBox,
   Panel,
+  QuickDays,
   ResultGrid,
   ResultItem,
 } from '../ui';
@@ -105,6 +106,9 @@ export default function FixedPatternTab() {
         </Field>
         <Field label="終了日（対象期間）">
           <input type="date" value={endISO} onChange={(e) => setEndISO(e.target.value)} />
+        </Field>
+        <Field label="クイック設定（開始日＋）">
+          <QuickDays baseISO={startISO} onPick={setEndISO} />
         </Field>
       </div>
 

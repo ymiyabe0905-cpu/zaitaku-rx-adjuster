@@ -342,6 +342,17 @@ body {
   border-color: var(--brick);
   box-shadow: inset 2px 2px 0 #ffe0cc, 0 0 0 2px #ffb38a;
 }
+/* 短い入力は間延びしないよう、入力要素自体の最大幅を制限（行レイアウトは従来どおり） */
+.field input[type='number'],
+.field input[type='text'] {
+  max-width: 140px;
+}
+.field input[type='date'] {
+  max-width: 190px;
+}
+.field select {
+  max-width: 280px;
+}
 
 /* ---------- ボタン（スタートボタン風） ---------- */
 .game-btn {

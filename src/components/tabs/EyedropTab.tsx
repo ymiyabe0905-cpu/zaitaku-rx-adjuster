@@ -38,8 +38,8 @@ export default function EyedropTab() {
   const [preset, setPreset] = useState<VolumePreset>('5');
   const [volumeOther, setVolumeOther] = useState('3');
   const [unusedBottles, setUnusedBottles] = useState('0');
-  // 残量は割合のみで入力。初期は未選択（空）
-  const [ratioKey, setRatioKey] = useState<RatioKey | ''>('');
+  // 残量は割合のみで入力。初期は「空（0滴）」（毎回選ばなくてよいように）
+  const [ratioKey, setRatioKey] = useState<RatioKey | ''>('empty');
   const [target, setTarget] = useState<EyeTarget>('both');
   const [timesPerDay, setTimesPerDay] = useState('2');
   const [startISO, setStartISO] = useState(todayISO());
@@ -166,7 +166,14 @@ export default function EyedropTab() {
           <input type="date" value={visitISO} onChange={(e) => setVisitISO(e.target.value)} />
         </Field>
         <Field label="クイック設定（開始日＋）">
-          <QuickDays baseISO={startISO} onPick={setVisitISO} />
+          <QuickDays
+            baseISO={startISO}
+            onPick={setVisitISO}
+            items={[
+              { label: '＋3か月', months: 3 },
+              { label: '＋6か月', months: 6 },
+            ]}
+          />
         </Field>
       </div>
 
@@ -229,6 +236,10 @@ export default function EyedropTab() {
         <NextRequestSection
           baseUnit="滴"
           pkg="本"
+          quickItems={[
+            { label: '＋3か月', months: 3 },
+            { label: '＋6か月', months: 6 },
+          ]}
           compute={() => {
             const volumeMl = preset === 'other' ? toNum(volumeOther, '容量(mL)', false) : volumeMlNow;
             const packageSize = dropsPerBottle(preset, volumeMl);
