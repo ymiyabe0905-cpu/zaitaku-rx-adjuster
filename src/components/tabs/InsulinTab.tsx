@@ -19,6 +19,7 @@ import {
   ResultGrid,
   ResultItem,
 } from '../ui';
+import { NextRequestSection } from '../NextRequestSection';
 
 interface FormState {
   penPreset: '300' | '400' | 'other';
@@ -66,8 +67,28 @@ const DEFAULT_FORM: FormState = {
 
 export default function InsulinTab() {
   const [f, setF] = useState<FormState>(DEFAULT_FORM);
+  const [mode, setMode] = useState<'check' | 'request'>('check');
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcInsulin> | null>(null);
+
+  // 用法から1日使用量(U)とパッケージ量(Pk)を求める（次回処方依頼モード用）
+  function computeUsage(): { dailyUse: number; packageSize: number } {
+    const unitsPerPen = f.penPreset === 'other' ? Number(f.penOther) : Number(f.penPreset);
+    if (!Number.isFinite(unitsPerPen) || unitsPerPen <= 0)
+      throw new Error('1本あたり単位数を正しく入力してください');
+    const air = f.includeAirshot ? Number(f.airshotUnits) : 0;
+    let dailyUse: number;
+    if (f.mode === 'fixed') {
+      const dose = Number(f.fixedDose);
+      if (!Number.isFinite(dose) || dose <= 0) throw new Error('1回量を正しく入力してください');
+      dailyUse = Number(f.injectionsPerDay) * (dose + air);
+    } else {
+      const slots = [f.morning, f.noon, f.evening, f.bedtime].map(Number);
+      dailyUse = slots.filter((u) => u > 0).reduce((sum, u) => sum + (u + air), 0);
+      if (dailyUse <= 0) throw new Error('朝・昼・夕・寝る前のいずれかに投与量を入力してください');
+    }
+    return { dailyUse, packageSize: unitsPerPen };
+  }
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setF((prev) => ({ ...prev, [key]: value }));
@@ -136,6 +157,15 @@ export default function InsulinTab() {
         在宅患者のインスリン残量から、あと何日分使えるか、持たせたい日まで必要な追加本数、注入針の必要本数を計算します。
         1回分として使えるかは、投与量ではなく<strong>空打ち込みの実消費単位</strong>で判定します。
       </p>
+
+      <div className="mode-toggle">
+        <button className={`mode-btn${mode === 'check' ? ' is-active' : ''}`} onClick={() => setMode('check')}>
+          残数チェック
+        </button>
+        <button className={`mode-btn${mode === 'request' ? ' is-active' : ''}`} onClick={() => setMode('request')}>
+          次回処方依頼
+        </button>
+      </div>
 
       {/* インスリン本体 */}
       <h3 className="section-head">① インスリン</h3>
@@ -215,6 +245,8 @@ export default function InsulinTab() {
         )}
       </div>
 
+      {mode === 'check' && (
+        <>
       {/* 期間 */}
       <h3 className="section-head">③ 期間</h3>
       <div className="form-row">
@@ -350,6 +382,12 @@ export default function InsulinTab() {
             ※ 使用開始後の使用可能期間は製剤ごとに異なります。対象製剤の添付文書・薬剤情報・施設での管理方法を必ず確認してください。
           </div>
         </>
+      )}
+        </>
+      )}
+
+      {mode === 'request' && (
+        <NextRequestSection baseUnit="単位" pkg="本" compute={computeUsage} />
       )}
     </Panel>
   );

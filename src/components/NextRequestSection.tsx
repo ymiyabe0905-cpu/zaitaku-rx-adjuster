@@ -1,0 +1,121 @@
+import { useState } from 'react';
+import { calcNextRequest, buildNextRequestNote } from '../lib/nextRequest';
+import { addDays, diffDays, parseDate, toISO, todayISO } from '../lib/dateUtils';
+import {
+  DetailBox,
+  ErrorBox,
+  Field,
+  GameButton,
+  HeroResult,
+  NoteBox,
+  ResultGrid,
+  ResultItem,
+} from './ui';
+
+/**
+ * 次回処方依頼モードの共通セクション。
+ * 用法から得た「1日使用量(U)」と「パッケージ量(Pk)」を compute() で受け取り、
+ * 訪問時の残数・今回処方数・訪問日2つから次回の依頼パッケージ数を計算する。
+ */
+export function NextRequestSection({
+  compute,
+  baseUnit,
+  pkg,
+}: {
+  compute: () => { dailyUse: number; packageSize: number };
+  baseUnit: string; // 単位 / 吸入 / 滴
+  pkg: string; // 本 / キット
+}) {
+  const [remainPkg, setRemainPkg] = useState('0');
+  const [rxPkg, setRxPkg] = useState('1');
+  const [visitISO, setVisitISO] = useState(todayISO());
+  const [nextVisitISO, setNextVisitISO] = useState(todayISO());
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<ReturnType<typeof calcNextRequest> | null>(null);
+
+  function run() {
+    setError('');
+    try {
+      const { dailyUse, packageSize } = compute(); // 用法の検証もここで行われる
+      if (!visitISO || !nextVisitISO) throw new Error('今回訪問日・次回訪問日を入力してください');
+      const cycleDays = diffDays(parseDate(visitISO), parseDate(nextVisitISO));
+      if (cycleDays <= 0) throw new Error('次回訪問日は今回訪問日より後にしてください');
+      const remaining = Number(remainPkg);
+      const prescribed = Number(rxPkg);
+      if (!Number.isFinite(remaining) || remaining < 0) throw new Error(`訪問時の残数（${pkg}）を正しく入力してください`);
+      if (!Number.isFinite(prescribed) || prescribed < 0) throw new Error(`今回処方数（${pkg}）を正しく入力してください`);
+      setResult(
+        calcNextRequest({
+          dailyUse,
+          packageSize,
+          remainingPackages: remaining,
+          prescribedPackages: prescribed,
+          cycleDays,
+        }),
+      );
+    } catch (e) {
+      setResult(null);
+      setError((e as Error).message);
+    }
+  }
+
+  return (
+    <>
+      <p className="lead">
+        訪問時の残数（{pkg}）と今回処方数（{pkg}）から、次サイクル（今回と同じ間隔）に向けて次回処方で依頼すべき{pkg}数を概算します。
+      </p>
+      <div className="form-row">
+        <Field label={`訪問時の残数（${pkg}）`} hint="小数可（例: 1.5）">
+          <input type="number" min={0} step="0.1" value={remainPkg} onChange={(e) => setRemainPkg(e.target.value)} />
+        </Field>
+        <Field label={`今回処方数（${pkg}）`}>
+          <input type="number" min={0} value={rxPkg} onChange={(e) => setRxPkg(e.target.value)} />
+        </Field>
+      </div>
+      <div className="form-row">
+        <Field label="今回訪問日">
+          <input type="date" value={visitISO} onChange={(e) => setVisitISO(e.target.value)} />
+        </Field>
+        <Field label="次回訪問日">
+          <input type="date" value={nextVisitISO} onChange={(e) => setNextVisitISO(e.target.value)} />
+        </Field>
+        <Field label="クイック設定">
+          <GameButton
+            variant="sub"
+            onClick={() => setNextVisitISO(toISO(addDays(parseDate(visitISO || todayISO()), 28)))}
+          >
+            今回＋28日
+          </GameButton>
+        </Field>
+      </div>
+
+      <GameButton onClick={run}>けいさん</GameButton>
+
+      {error && <ErrorBox message={error} />}
+      {result && (
+        <>
+          <HeroResult
+            items={[
+              { label: '次回処方依頼', value: result.requestPackages > 0 ? `${result.requestPackages}${pkg}` : '不要' },
+              { label: '次回訪問時の予測残数', value: `約${result.predictedRemainUnits}${baseUnit}` },
+              { label: '今サイクル日数', value: `${result.cycleDays}日` },
+            ]}
+          />
+          <NoteBox text={buildNextRequestNote(result, baseUnit, pkg)} />
+          <DetailBox>
+            <ResultGrid>
+              <ResultItem label="1日使用量" value={`${result.dailyUse}${baseUnit}`} />
+              <ResultItem label={`1${pkg}あたりの量`} value={`${result.packageSize}${baseUnit}`} />
+              <ResultItem label="合計量（残数＋今回処方）" value={`${result.totalUnits}${baseUnit}`} />
+              <ResultItem label="今サイクル消費量" value={`${result.consumeThisCycle}${baseUnit}`} />
+              <ResultItem label="次回訪問時の予測残数" value={`${result.predictedRemainUnits}${baseUnit}`} />
+              <ResultItem label="次回必要量" value={`${result.nextNeedUnits}${baseUnit}`} />
+              <ResultItem label="次回処方依頼量" value={`${result.requestUnits}${baseUnit}`} accent />
+              <ResultItem label="依頼パッケージ数" value={`${result.requestPackages}${pkg}`} accent />
+            </ResultGrid>
+          </DetailBox>
+        </>
+      )}
+    </>
+  );
+}

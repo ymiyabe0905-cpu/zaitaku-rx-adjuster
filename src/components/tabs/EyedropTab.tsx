@@ -22,6 +22,7 @@ import {
   ResultGrid,
   ResultItem,
 } from '../ui';
+import { NextRequestSection } from '../NextRequestSection';
 
 function toNum(s: string, name: string, allowZero = true): number {
   const n = Number(s);
@@ -41,6 +42,7 @@ export default function EyedropTab() {
   const [timesPerDay, setTimesPerDay] = useState('2');
   const [startISO, setStartISO] = useState(todayISO());
   const [visitISO, setVisitISO] = useState('2026-07-14');
+  const [mode, setMode] = useState<'check' | 'request'>('check');
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcEyedrop> | null>(null);
 
@@ -80,6 +82,15 @@ export default function EyedropTab() {
       <p className="lead">
         点眼薬の容量から滴数を概算します（5mL＝100滴、2.5mL＝50滴、1mLあたり20滴）。厳密計算ではなく確認用です。
       </p>
+
+      <div className="mode-toggle">
+        <button className={`mode-btn${mode === 'check' ? ' is-active' : ''}`} onClick={() => setMode('check')}>
+          残数チェック
+        </button>
+        <button className={`mode-btn${mode === 'request' ? ' is-active' : ''}`} onClick={() => setMode('request')}>
+          次回処方依頼
+        </button>
+      </div>
 
       {/* 点眼薬 */}
       <h3 className="section-head">① 点眼薬</h3>
@@ -141,6 +152,8 @@ export default function EyedropTab() {
         </Field>
       </div>
 
+      {mode === 'check' && (
+        <>
       {/* 期間 */}
       <h3 className="section-head">④ 期間</h3>
       <div className="form-row">
@@ -203,6 +216,22 @@ export default function EyedropTab() {
             ※ 使用中ボトルの残量割合から計算する場合は概算です。残量カウンターのような正確な値ではありません。
           </div>
         </>
+      )}
+        </>
+      )}
+
+      {mode === 'request' && (
+        <NextRequestSection
+          baseUnit="滴"
+          pkg="本"
+          compute={() => {
+            const volumeMl = preset === 'other' ? toNum(volumeOther, '容量(mL)', false) : volumeMlNow;
+            const packageSize = dropsPerBottle(preset, volumeMl);
+            const eyes = target === 'both' ? 2 : 1;
+            const dailyUse = eyes * 1 * Number(timesPerDay);
+            return { dailyUse, packageSize };
+          }}
+        />
       )}
     </Panel>
   );

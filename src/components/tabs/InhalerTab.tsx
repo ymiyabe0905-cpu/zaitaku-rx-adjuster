@@ -22,6 +22,7 @@ import {
   ResultGrid,
   ResultItem,
 } from '../ui';
+import { NextRequestSection } from '../NextRequestSection';
 
 type Mode = 'regular' | 'prn';
 
@@ -82,8 +83,16 @@ function RegularMode() {
   const [timesPerDay, setTimesPerDay] = useState('2');
   const [startISO, setStartISO] = useState(todayISO());
   const [visitISO, setVisitISO] = useState('2026-07-14');
+  const [mode, setMode] = useState<'check' | 'request'>('check');
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcRegular> | null>(null);
+
+  // 用法から1日使用吸入数(U)と1キット総吸入数(Pk)を求める（次回処方依頼モード用）
+  function computeUsage(): { dailyUse: number; packageSize: number } {
+    const packageSize = kitUnits(kitPreset, kitOther);
+    const dailyUse = Math.floor(toNum(perDose, '1回あたり吸入数', false)) * Number(timesPerDay);
+    return { dailyUse, packageSize };
+  }
 
   function run() {
     setError('');
@@ -113,6 +122,15 @@ function RegularMode() {
 
   return (
     <>
+      <div className="mode-toggle">
+        <button className={`mode-btn${mode === 'check' ? ' is-active' : ''}`} onClick={() => setMode('check')}>
+          残数チェック
+        </button>
+        <button className={`mode-btn${mode === 'request' ? ' is-active' : ''}`} onClick={() => setMode('request')}>
+          次回処方依頼
+        </button>
+      </div>
+
       <h3 className="section-head">① 吸入薬</h3>
       <div className="form-row">
         <KitSelect preset={kitPreset} other={kitOther} onPreset={setKitPreset} onOther={setKitOther} />
@@ -138,6 +156,8 @@ function RegularMode() {
         </Field>
       </div>
 
+      {mode === 'check' && (
+        <>
       <h3 className="section-head">③ 期間</h3>
       <div className="form-row">
         <Field label="開始日">
@@ -187,6 +207,12 @@ function RegularMode() {
             </ResultGrid>
           </DetailBox>
         </>
+      )}
+        </>
+      )}
+
+      {mode === 'request' && (
+        <NextRequestSection baseUnit="吸入" pkg="キット" compute={computeUsage} />
       )}
     </>
   );
