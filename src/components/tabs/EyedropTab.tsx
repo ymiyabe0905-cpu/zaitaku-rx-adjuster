@@ -12,6 +12,7 @@ import {
 } from '../../lib/eyedrops';
 import { formatJP, parseDate, todayISO } from '../../lib/dateUtils';
 import {
+  CountStepper,
   DetailBox,
   ErrorBox,
   Field,
@@ -112,7 +113,7 @@ export default function EyedropTab() {
           <input type="text" value={`${perBottleNow}滴`} readOnly />
         </Field>
         <Field label="未使用本数">
-          <input type="number" min={0} value={unusedBottles} onChange={(e) => setUnusedBottles(e.target.value)} />
+          <CountStepper value={unusedBottles} onChange={setUnusedBottles} unit="本" />
         </Field>
       </div>
 

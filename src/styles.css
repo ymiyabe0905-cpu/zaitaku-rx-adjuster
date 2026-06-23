@@ -409,6 +409,37 @@ body {
   line-height: 1.7;
 }
 
+/* ---------- 本数ステッパー（iPadでタップしやすい） ---------- */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.step-btn {
+  width: 48px;
+  height: 48px;
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--ink);
+  background: var(--coin);
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: inset -3px -3px 0 #c79a00, inset 3px 3px 0 #fff3a8;
+  touch-action: manipulation;
+}
+.step-btn:active { transform: translate(1px, 1px); }
+.step-val {
+  min-width: 64px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 18px;
+  padding: 10px 8px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+}
+
 /* ---------- クイック設定ボタン ---------- */
 .quick-row {
   display: flex;

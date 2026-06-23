@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { calcNextRequest, buildNextRequestNote } from '../lib/nextRequest';
 import { diffDays, parseDate, todayISO } from '../lib/dateUtils';
 import {
+  CountStepper,
   DetailBox,
   ErrorBox,
   Field,
@@ -65,7 +66,7 @@ export function NextRequestSection({
       </p>
       <div className="form-row">
         <Field label={`今回処方数（${pkg}）`}>
-          <input type="number" min={0} value={rxPkg} onChange={(e) => setRxPkg(e.target.value)} />
+          <CountStepper value={rxPkg} onChange={setRxPkg} unit={pkg} />
         </Field>
       </div>
       <div className="form-row">

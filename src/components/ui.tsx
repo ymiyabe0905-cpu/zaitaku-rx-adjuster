@@ -83,6 +83,42 @@ export function SlotSelect({
   );
 }
 
+/**
+ * 本数・キット数などの小さな整数を、iPadでタップしやすい −／＋ ステッパーで入力する。
+ * value/onChange は文字列（他の入力欄と揃えるため）。
+ */
+export function CountStepper({
+  value,
+  onChange,
+  unit = '',
+  min = 0,
+  max = 99,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  unit?: string;
+  min?: number;
+  max?: number;
+}) {
+  const n = Number(value);
+  const cur = Number.isFinite(n) ? n : 0;
+  const set = (x: number) => onChange(String(Math.min(max, Math.max(min, x))));
+  return (
+    <div className="stepper">
+      <button type="button" className="step-btn" onClick={() => set(cur - 1)} aria-label="減らす">
+        −
+      </button>
+      <span className="step-val">
+        {cur}
+        {unit}
+      </span>
+      <button type="button" className="step-btn" onClick={() => set(cur + 1)} aria-label="増やす">
+        ＋
+      </button>
+    </div>
+  );
+}
+
 /** 入力欄1行（ラベル＋子要素） */
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (

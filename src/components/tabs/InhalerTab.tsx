@@ -12,6 +12,7 @@ import {
 } from '../../lib/inhaler';
 import { formatJP, parseDate, todayISO } from '../../lib/dateUtils';
 import {
+  CountStepper,
   DetailBox,
   ErrorBox,
   Field,
@@ -140,7 +141,7 @@ function RegularMode() {
       <div className="form-row">
         <KitSelect preset={kitPreset} other={kitOther} onPreset={setKitPreset} onOther={setKitOther} />
         <Field label="未使用キット数">
-          <input type="number" min={0} value={unusedKits} onChange={(e) => setUnusedKits(e.target.value)} />
+          <CountStepper value={unusedKits} onChange={setUnusedKits} unit="キット" />
         </Field>
         <Field label="使用中キットの残吸入数（0可）">
           <input type="number" min={0} value={currentKit} onChange={(e) => setCurrentKit(e.target.value)} />
@@ -304,7 +305,7 @@ function PrnMode() {
           <input type="number" min={0} value={currRem} onChange={(e) => setCurrRem(e.target.value)} />
         </Field>
         <Field label="前回〜今回に追加されたキット数">
-          <input type="number" min={0} value={addedKits} onChange={(e) => setAddedKits(e.target.value)} />
+          <CountStepper value={addedKits} onChange={setAddedKits} unit="キット" />
         </Field>
       </div>
 
@@ -314,7 +315,7 @@ function PrnMode() {
           <input type="number" min={1} value={perDose} onChange={(e) => setPerDose(e.target.value)} />
         </Field>
         <Field label="現在の未使用キット数">
-          <input type="number" min={0} value={unusedKits} onChange={(e) => setUnusedKits(e.target.value)} />
+          <CountStepper value={unusedKits} onChange={setUnusedKits} unit="キット" />
         </Field>
         <Field label="持たせたい日" hint="この日まで残数を持たせたい">
           <input type="date" value={visitISO} onChange={(e) => setVisitISO(e.target.value)} />

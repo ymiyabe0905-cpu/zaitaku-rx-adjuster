@@ -12,6 +12,7 @@ import {
   DetailBox,
   ErrorBox,
   Field,
+  CountStepper,
   GameButton,
   HeroResult,
   NoteBox,
@@ -188,7 +189,7 @@ export default function InsulinTab() {
           </Field>
         )}
         <Field label="現在の未使用本数">
-          <input type="number" min={0} value={f.unusedPens} onChange={(e) => set('unusedPens', e.target.value)} />
+          <CountStepper value={f.unusedPens} onChange={(v) => set('unusedPens', v)} unit="本" />
         </Field>
         <Field label="使用中ペンの残単位数（0可）">
           <input type="number" min={0} value={f.currentPenUnits} onChange={(e) => set('currentPenUnits', e.target.value)} />
