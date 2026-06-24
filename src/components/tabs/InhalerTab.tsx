@@ -10,7 +10,7 @@ import {
   calcRegular,
   fmtNum,
 } from '../../lib/inhaler';
-import { formatJP, parseDate, todayISO } from '../../lib/dateUtils';
+import { addDays, formatJP, parseDate, toISO, todayISO } from '../../lib/dateUtils';
 import {
   CountStepper,
   DetailBox,
@@ -231,8 +231,8 @@ function RegularMode() {
 function PrnMode() {
   const [kitPreset, setKitPreset] = useState('100');
   const [kitOther, setKitOther] = useState('');
-  const [prevISO, setPrevISO] = useState('2026-06-01');
-  const [currISO, setCurrISO] = useState('2026-06-15');
+  const [prevISO, setPrevISO] = useState(toISO(addDays(new Date(), -14))); // 前回＝2週間前
+  const [currISO, setCurrISO] = useState(todayISO()); // 今回＝当日
   const [prevRem, setPrevRem] = useState('80');
   const [currRem, setCurrRem] = useState('50');
   const [addedKits, setAddedKits] = useState('0');
