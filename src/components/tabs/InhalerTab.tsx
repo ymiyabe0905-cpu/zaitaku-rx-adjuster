@@ -312,13 +312,20 @@ function PrnMode() {
       <h3 className="section-head">② 現在の残量・見込み</h3>
       <div className="form-row">
         <Field label="1回あたり吸入数">
-          <input type="number" min={1} value={perDose} onChange={(e) => setPerDose(e.target.value)} />
+          <select value={perDose} onChange={(e) => setPerDose(e.target.value)}>
+            {[1, 2].map((n) => (
+              <option key={n} value={n}>{n}吸入</option>
+            ))}
+          </select>
         </Field>
         <Field label="現在の未使用キット数">
           <CountStepper value={unusedKits} onChange={setUnusedKits} unit="キット" />
         </Field>
         <Field label="持たせたい日" hint="この日まで残数を持たせたい">
           <input type="date" value={visitISO} onChange={(e) => setVisitISO(e.target.value)} />
+        </Field>
+        <Field label="クイック設定（今回確認日＋）">
+          <QuickDays baseISO={currISO} onPick={setVisitISO} />
         </Field>
       </div>
       <div className="form-row">
