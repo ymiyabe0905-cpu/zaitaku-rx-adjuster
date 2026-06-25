@@ -25,6 +25,7 @@ import {
   ResultItem,
 } from '../ui';
 import { NextRequestSection } from '../NextRequestSection';
+import { ComplianceSection } from '../ComplianceSection';
 
 type Mode = 'regular' | 'prn';
 
@@ -85,7 +86,7 @@ function RegularMode() {
   const [timesPerDay, setTimesPerDay] = useState('2');
   const [startISO, setStartISO] = useState(todayISO());
   const [visitISO, setVisitISO] = useState('2026-07-14');
-  const [mode, setMode] = useState<'check' | 'request'>('check');
+  const [mode, setMode] = useState<'check' | 'request' | 'compliance'>('check');
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcRegular> | null>(null);
 
@@ -134,6 +135,9 @@ function RegularMode() {
         </button>
         <button className={`mode-btn${mode === 'request' ? ' is-active' : ''}`} onClick={() => setMode('request')}>
           次回処方依頼
+        </button>
+        <button className={`mode-btn${mode === 'compliance' ? ' is-active' : ''}`} onClick={() => setMode('compliance')}>
+          コンプライアンス判定
         </button>
       </div>
 
@@ -222,6 +226,9 @@ function RegularMode() {
 
       {mode === 'request' && (
         <NextRequestSection baseUnit="吸入" pkg="キット" compute={computeUsage} />
+      )}
+      {mode === 'compliance' && (
+        <ComplianceSection baseUnit="吸入" compute={() => ({ dailyUse: computeUsage().dailyUse })} />
       )}
     </>
   );

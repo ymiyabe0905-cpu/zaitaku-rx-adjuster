@@ -22,6 +22,7 @@ import {
   ResultItem,
 } from '../ui';
 import { NextRequestSection } from '../NextRequestSection';
+import { ComplianceSection } from '../ComplianceSection';
 
 interface FormState {
   penPreset: '300' | '400' | 'other';
@@ -69,7 +70,7 @@ const DEFAULT_FORM: FormState = {
 
 export default function InsulinTab() {
   const [f, setF] = useState<FormState>(DEFAULT_FORM);
-  const [mode, setMode] = useState<'check' | 'request'>('check');
+  const [mode, setMode] = useState<'check' | 'request' | 'compliance'>('check');
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcInsulin> | null>(null);
 
@@ -170,6 +171,9 @@ export default function InsulinTab() {
         </button>
         <button className={`mode-btn${mode === 'request' ? ' is-active' : ''}`} onClick={() => setMode('request')}>
           次回処方依頼
+        </button>
+        <button className={`mode-btn${mode === 'compliance' ? ' is-active' : ''}`} onClick={() => setMode('compliance')}>
+          コンプライアンス判定
         </button>
       </div>
 
@@ -397,6 +401,9 @@ export default function InsulinTab() {
 
       {mode === 'request' && (
         <NextRequestSection baseUnit="単位" pkg="本" compute={computeUsage} />
+      )}
+      {mode === 'compliance' && (
+        <ComplianceSection baseUnit="単位" compute={() => ({ dailyUse: computeUsage().dailyUse })} />
       )}
     </Panel>
   );
