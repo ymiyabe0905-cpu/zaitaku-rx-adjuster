@@ -32,6 +32,7 @@ export function ComplianceSection({
   const [currISO, setCurrISO] = useState(todayISO());
   const [prevUnused, setPrevUnused] = useState('0'); // 前回の未使用本数/キット数
   const [prevCurrentRem, setPrevCurrentRem] = useState(''); // 前回の使用中の残（基本単位）
+  const [addedPkg, setAddedPkg] = useState('0'); // 補充＝前回処方分（本/キット数）
   const [error, setError] = useState('');
   const [result, setResult] = useState<ReturnType<typeof calcCompliance> | null>(null);
 
@@ -45,11 +46,14 @@ export function ComplianceSection({
       if (!Number.isFinite(prevCurr) || prevCurr < 0)
         throw new Error(`前回の使用中の残（${baseUnit}）を正しく入力してください`);
       const prevRemain = prevUnusedN * packageSize + prevCurr;
+      const addedPkgN = Math.max(0, Math.floor(Number(addedPkg) || 0));
+      const added = addedPkgN * packageSize; // 補充（前回処方分）
       setResult(
         calcCompliance({
           prevDate: parseDate(prevISO),
           currDate: parseDate(currISO),
           prevRemain,
+          added,
           currRemain: currentRemainUnits, // 今回残薬＝①の在庫
           dailyUse,
         }),
@@ -63,8 +67,8 @@ export function ComplianceSection({
   return (
     <>
       <p className="lead">
-        今回残薬は①の在庫（未使用＋使用中の残）を使います。前回残薬だけ入力すると、実使用量と達成率を判定します
-        （補充なし前提・残薬ベースの参考判定）。
+        今回残薬は①の在庫（未使用＋使用中の残）を使います。前回残薬と補充（前回処方分）を入力すると、
+        実使用量＝前回残薬＋補充−今回残薬として達成率を判定します（残薬ベースの参考判定）。
       </p>
       <div className="form-row">
         <Field label="前回確認日">
@@ -93,6 +97,9 @@ export function ComplianceSection({
         <Field label={`前回の使用中の残（${baseUnit}）`}>
           <input type="number" min={0} value={prevCurrentRem} onChange={(e) => setPrevCurrentRem(e.target.value)} />
         </Field>
+        <Field label={`補充＝前回処方分（${pkg}数）`} hint="前回確認後に渡した処方分">
+          <CountStepper value={addedPkg} onChange={setAddedPkg} unit={pkg} />
+        </Field>
       </div>
 
       <GameButton onClick={run}>けいさん</GameButton>
@@ -112,6 +119,7 @@ export function ComplianceSection({
             <ResultGrid>
               <ResultItem label="期間日数" value={`${result.periodDays}日`} />
               <ResultItem label="前回残薬" value={`${result.prevRemain}${baseUnit}`} />
+              <ResultItem label="補充（前回処方分）" value={`${result.added}${baseUnit}`} />
               <ResultItem label="今回残薬（①の在庫）" value={`${result.currRemain}${baseUnit}`} />
               <ResultItem label="実使用量" value={`${result.usedActual}${baseUnit}`} />
               <ResultItem label="1日使用量" value={`${result.dailyUse}${baseUnit}`} />

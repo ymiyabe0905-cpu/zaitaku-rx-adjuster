@@ -4,7 +4,7 @@
  * 前回残薬と今回残薬の差を「実使用量」とし、用法から求めた「期待使用量」と比べて
  * 達成率を出す（補充なし前提）。残薬ベースの参考判定。
  *
- *   実使用量   = 前回残薬 − 今回残薬
+ *   実使用量   = 前回残薬 ＋ 補充（前回処方分） − 今回残薬
  *   期待使用量 = 1日使用量 × 期間日数
  *   達成率(%)  = 実使用量 ÷ 期待使用量 × 100
  *   判定: <90% 過少 / 90〜110% 良好 / >110% 過多
@@ -18,6 +18,7 @@ export interface ComplianceInput {
   prevDate: Date;
   currDate: Date;
   prevRemain: number; // 前回残薬（基本単位）
+  added: number; // 補充＝前回処方分（基本単位）
   currRemain: number; // 今回残薬（基本単位）
   dailyUse: number; // 1日使用量（用法から・基本単位/日）
 }
@@ -25,6 +26,7 @@ export interface ComplianceInput {
 export interface ComplianceResult {
   periodDays: number;
   prevRemain: number;
+  added: number;
   currRemain: number;
   usedActual: number; // 実使用量
   dailyUse: number;
@@ -41,7 +43,7 @@ export function calcCompliance(input: ComplianceInput): ComplianceResult {
   if (periodDays <= 0) throw new Error('今回確認日は前回確認日より後にしてください');
   if (input.dailyUse <= 0) throw new Error('1日使用量が0です。用法を入力してください。');
 
-  const usedActual = input.prevRemain - input.currRemain;
+  const usedActual = input.prevRemain + input.added - input.currRemain;
   const expectedUsed = input.dailyUse * periodDays;
 
   let status: ComplianceStatus;
@@ -56,6 +58,7 @@ export function calcCompliance(input: ComplianceInput): ComplianceResult {
   return {
     periodDays,
     prevRemain: input.prevRemain,
+    added: input.added,
     currRemain: input.currRemain,
     usedActual,
     dailyUse: input.dailyUse,
@@ -85,14 +88,15 @@ export function statusLabel(s: ComplianceStatus): string {
 }
 
 export function buildComplianceNote(r: ComplianceResult, unit: string): string {
+  const addedPhrase = r.added > 0 ? `＋補充${r.added}${unit}` : '';
   if (r.status === 'invalid') {
     return (
-      `今回の残薬（${r.currRemain}${unit}）が前回（${r.prevRemain}${unit}）より多いため、判定できません。` +
-      `期間中に補充（追加処方・受け取り）があった可能性があります。`
+      `前回残薬${r.prevRemain}${unit}${addedPhrase}より今回残薬（${r.currRemain}${unit}）が多く、実使用量がマイナスのため判定できません。` +
+      `補充量や残薬の確認をお願いします。`
     );
   }
   const head =
-    `前回確認日から今回確認日まで${r.periodDays}日間で、残薬は${r.usedActual}${unit}減りました（実使用量${r.usedActual}${unit}）。` +
+    `前回確認日から今回確認日まで${r.periodDays}日間で、前回残薬${r.prevRemain}${unit}${addedPhrase}・今回残薬${r.currRemain}${unit}から、実使用量は${r.usedActual}${unit}です。` +
     `用法から見た期待使用量は${r.expectedUsed}${unit}（1日${r.dailyUse}${unit}）で、達成率は約${rateLabel(r)}です。`;
   const tail =
     r.status === 'ok'
