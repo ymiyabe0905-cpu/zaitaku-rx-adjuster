@@ -108,8 +108,17 @@ export default function FixedPatternTab() {
         <Field label="終了日（対象期間）">
           <input type="date" value={endISO} onChange={(e) => setEndISO(e.target.value)} />
         </Field>
-        <Field label="クイック設定（開始日＋）">
-          <QuickDays baseISO={startISO} onPick={setEndISO} />
+        <Field label="クイック設定（開始日を1日目とした日数分）">
+          <QuickDays
+            baseISO={startISO}
+            onPick={setEndISO}
+            items={[
+              { label: '14日分', days: 13 },
+              { label: '21日分', days: 20 },
+              { label: '28日分', days: 27 },
+              { label: '35日分', days: 34 },
+            ]}
+          />
         </Field>
       </div>
 
