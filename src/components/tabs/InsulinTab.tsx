@@ -403,7 +403,14 @@ export default function InsulinTab() {
         <NextRequestSection baseUnit="単位" pkg="本" compute={computeUsage} />
       )}
       {mode === 'compliance' && (
-        <ComplianceSection baseUnit="単位" compute={() => ({ dailyUse: computeUsage().dailyUse })} />
+        <ComplianceSection
+          baseUnit="単位"
+          pkg="本"
+          compute={() => {
+            const u = computeUsage();
+            return { dailyUse: u.dailyUse, currentRemainUnits: u.remainingUnits, packageSize: u.packageSize };
+          }}
+        />
       )}
     </Panel>
   );

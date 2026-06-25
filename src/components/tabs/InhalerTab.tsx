@@ -228,7 +228,14 @@ function RegularMode() {
         <NextRequestSection baseUnit="吸入" pkg="キット" compute={computeUsage} />
       )}
       {mode === 'compliance' && (
-        <ComplianceSection baseUnit="吸入" compute={() => ({ dailyUse: computeUsage().dailyUse })} />
+        <ComplianceSection
+          baseUnit="吸入"
+          pkg="キット"
+          compute={() => {
+            const u = computeUsage();
+            return { dailyUse: u.dailyUse, currentRemainUnits: u.remainingUnits, packageSize: u.packageSize };
+          }}
+        />
       )}
     </>
   );
