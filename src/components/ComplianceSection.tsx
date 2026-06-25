@@ -9,6 +9,7 @@ import {
   GameButton,
   HeroResult,
   NoteBox,
+  QuickDays,
   ResultGrid,
   ResultItem,
 } from './ui';
@@ -71,6 +72,18 @@ export function ComplianceSection({
         </Field>
         <Field label="今回確認日">
           <input type="date" value={currISO} onChange={(e) => setCurrISO(e.target.value)} />
+        </Field>
+        <Field label="クイック設定（今回確認日から逆算して前回確認日に）">
+          <QuickDays
+            baseISO={currISO}
+            onPick={setPrevISO}
+            items={[
+              { label: '14日前', days: -14 },
+              { label: '21日前', days: -21 },
+              { label: '28日前', days: -28 },
+              { label: '35日前', days: -35 },
+            ]}
+          />
         </Field>
       </div>
       <div className="form-row">
