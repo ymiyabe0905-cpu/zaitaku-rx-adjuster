@@ -625,6 +625,20 @@ body {
 .detail-box[open] > summary::before { content: '▾ '; }
 .detail-body { padding: 0 12px 12px; }
 .detail-body .result-grid { margin-top: 0; }
+.detail-body .section-head { margin-top: 14px; }
+.detail-formula {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.9;
+  color: #173a6b;
+}
+.detail-formula li { margin-bottom: 2px; word-break: break-word; }
+.detail-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #4a648a;
+}
 
 /* ---------- 結果表示 ---------- */
 .result-grid {

@@ -89,4 +89,54 @@ export function formatJPFull(d: Date): string {
   return `${d.getFullYear()}/${m}/${day}(${WEEKDAY_JP[d.getDay()]})`;
 }
 
+/* ==========================================================================
+ * 日時（時刻あり）ユーティリティ
+ *  - モルヒネ持続投与計算のように「開始日時＋N時間」を扱う機能で使う。
+ *  - <input type="datetime-local"> が返す "YYYY-MM-DDTHH:mm" 文字列を前提とする。
+ *  - 日本にはサマータイムが無いため、時間加算は単純なミリ秒加算で安全。
+ * ========================================================================== */
+
+const MS_PER_HOUR = 3600000;
+
+/** n 時間後（n が負なら n 時間前）。分・秒精度も保持する */
+export function addHours(d: Date, hours: number): Date {
+  return new Date(d.getTime() + hours * MS_PER_HOUR);
+}
+
+/** 現在日時を datetime-local 入力用の "YYYY-MM-DDTHH:mm"（ローカル時刻）で返す */
+export function nowDateTimeLocal(): string {
+  return toDateTimeLocal(new Date());
+}
+
+/** Date を datetime-local 入力用の "YYYY-MM-DDTHH:mm"（ローカル時刻）に変換 */
+export function toDateTimeLocal(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}T${h}:${min}`;
+}
+
+/**
+ * "YYYY-MM-DDTHH:mm"（datetime-local の値）をローカル日時に変換する。
+ * new Date(文字列) の実装差を避けるため、明示的にローカル日時として組み立てる。
+ * 形式が不正なら null を返す。
+ */
+export function parseDateTimeLocal(s: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m.map(Number) as unknown as number[];
+  const date = new Date(y, mo - 1, d, h, mi);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** "2026/07/08(水) 14:30" 形式（年・時刻つき） */
+export function formatJPDateTime(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getFullYear()}/${m}/${day}(${WEEKDAY_JP[d.getDay()]}) ${h}:${min}`;
+}
+
 export { WEEKDAY_JP };

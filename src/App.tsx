@@ -8,6 +8,7 @@ import FixedPatternTab from './components/tabs/FixedPatternTab';
 import InsulinTab from './components/tabs/InsulinTab';
 import InhalerTab from './components/tabs/InhalerTab';
 import EyedropTab from './components/tabs/EyedropTab';
+import MorphineInfusionTab from './components/tabs/MorphineInfusionTab';
 
 interface TabDef {
   key: string;
@@ -25,6 +26,7 @@ const TABS: TabDef[] = [
   { key: 'insulin', label: 'インスリン残数', icon: '🪙', render: () => <InsulinTab /> },
   { key: 'inhaler', label: '吸入薬残数', icon: '◆', render: () => <InhalerTab /> },
   { key: 'eyedrop', label: '点眼薬残数', icon: '◆', render: () => <EyedropTab /> },
+  { key: 'morphine', label: 'モルヒネ持続投与', icon: '💧', render: () => <MorphineInfusionTab /> },
 ];
 
 export default function App() {
