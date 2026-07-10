@@ -36,7 +36,6 @@ interface FormState {
   bolusHours: string;
   bolusManualMl: string;
   bolusPerDay: string; // ボーラス 1日の使用回数
-  safetyMarginHours: string;
 }
 
 const DEFAULT_FORM: FormState = {
@@ -52,7 +51,6 @@ const DEFAULT_FORM: FormState = {
   bolusHours: '1',
   bolusManualMl: '',
   bolusPerDay: '3',
-  safetyMarginHours: '0',
 };
 
 /** 投与速度の刻み（mL/時） */
@@ -94,7 +92,6 @@ export default function MorphineInfusionTab() {
       bolusHours: Number(f.bolusHours),
       bolusManualMl: Number(f.bolusManualMl),
       bolusPerDay: Number(f.bolusPerDay),
-      safetyMarginHours: Number(f.safetyMarginHours),
     };
     return calculateMorphineInfusion(input);
   }, [f]);
@@ -104,7 +101,7 @@ export default function MorphineInfusionTab() {
       <p className="lead">
         持続投与デバイスの薬液全量・モルヒネ総量・投与速度から、
         <strong>1日モルヒネ量・使用可能日数・次回交換目安</strong>を確認します。
-        ボーラス（追加投与）は1日の使用回数で反映し、途中の残液量からの再計算もできます。
+        ボーラス（追加投与）は1日の使用回数で使用可能日数に反映し、途中の残液量からの再計算もできます。
       </p>
 
       {/* モード切替 */}
@@ -291,21 +288,6 @@ export default function MorphineInfusionTab() {
         </>
       )}
 
-      {/* ④ 安全マージン */}
-      <h3 className="section-head">④ 予備・安全マージン（任意）</h3>
-      <div className="form-row">
-        <Field label="交換を何時間前倒しで表示するか" hint="初期値0時間。例: 6にすると空予定の6時間前を目安表示">
-          <input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="any"
-            value={f.safetyMarginHours}
-            onChange={(e) => set('safetyMarginHours', e.target.value)}
-          />
-        </Field>
-      </div>
-
       {/* --- 結果 --- */}
       {result.errors.map((msg, i) => (
         <ErrorBox key={i} message={msg} />
@@ -322,18 +304,18 @@ export default function MorphineInfusionTab() {
           <HeroResult
             items={[
               {
-                label: result.bolusEnabled ? '1日モルヒネ量（ボーラス込み）' : '1日モルヒネ量',
-                value: `${fmtMgPerDay(result.mgPerDayTotal)} mg/日`,
+                label: '1日モルヒネ量（持続）',
+                value: `${fmtMgPerDay(result.mgPerDayContinuous)} mg/日`,
               },
               {
-                label: result.mode === 'remaining' ? '残りの使用可能日数' : 'ボーラス反映後の使用可能日数',
+                label: result.mode === 'remaining' ? '残りの使用可能日数' : '使用可能日数',
                 value: result.exhausted ? '交換必要' : `${fmtDays(result.usableDaysAfterBolus)} 日`,
               },
               {
                 label: '次回交換目安',
                 value:
-                  result.recommendedExchangeDateTime && !result.exhausted
-                    ? formatJPDateTime(result.recommendedExchangeDateTime)
+                  result.emptyDateTime && !result.exhausted
+                    ? formatJPDateTime(result.emptyDateTime)
                     : result.exhausted
                       ? '交換必要'
                       : '—',
@@ -346,39 +328,43 @@ export default function MorphineInfusionTab() {
             <ResultItem label="モルヒネ濃度" value={`${fmtMgPerMl(result.concentrationMgPerMl)} mg/mL`} />
             <ResultItem label="投与速度" value={`${fmtMl(result.rateMlPerHour)} mL/時`} />
             <ResultItem label="モルヒネ投与量" value={`${fmtMgPerHour(result.mgPerHour)} mg/時`} />
-            <ResultItem label="モルヒネ投与量（持続）" value={`${fmtMgPerDay(result.mgPerDayContinuous)} mg/日`} />
+            <ResultItem label="モルヒネ投与量（持続）" value={`${fmtMgPerDay(result.mgPerDayContinuous)} mg/日`} accent />
             {result.bolusEnabled && (
-              <ResultItem label="モルヒネ投与量（持続＋ボーラス）" value={`${fmtMgPerDay(result.mgPerDayTotal)} mg/日`} accent />
+              <>
+                <ResultItem label="ボーラス1回量" value={`${fmtMl(result.bolusOnceMl)} mL`} />
+                <ResultItem label="ボーラス1回あたりモルヒネ量" value={`${fmtMgPerHour(result.bolusOnceMg)} mg`} />
+                <ResultItem label="ボーラス1日回数" value={`${result.bolusPerDayCount} 回/日`} />
+                <ResultItem label="ボーラス1日使用量" value={`${fmtMl(result.bolusMlPerDay)} mL/日`} />
+                <ResultItem
+                  label="ボーラス1日モルヒネ量（参考・1日量に非合算）"
+                  value={`${fmtMgPerHour(result.bolusMgPerDay)} mg/日`}
+                />
+                <ResultItem label="ボーラスによる短縮時間" value={`${fmtShortenHours(result.shortenHours)} 時間`} />
+              </>
             )}
-            <ResultItem label="ボーラス1回量" value={`${fmtMl(result.bolusOnceMl)} mL`} />
-            <ResultItem label="ボーラス1回あたりモルヒネ量" value={`${fmtMgPerHour(result.bolusOnceMg)} mg`} />
-            <ResultItem label="ボーラス1日回数" value={`${result.bolusPerDayCount} 回/日`} />
-            <ResultItem label="ボーラス1日使用量" value={`${fmtMl(result.bolusMlPerDay)} mL/日`} />
-            <ResultItem label="ボーラス1日モルヒネ量" value={`${fmtMgPerHour(result.bolusMgPerDay)} mg/日`} />
-            <ResultItem label="ボーラスによる短縮時間" value={`${fmtShortenHours(result.shortenHours)} 時間`} />
             {result.mode === 'remaining' && (
               <ResultItem label="現在の残液量" value={`${fmtMl(result.remainingVolumeMl)} mL`} />
             )}
+            {result.bolusEnabled && (
+              <ResultItem
+                label={result.mode === 'remaining' ? '残り使用可能日数（持続のみ）' : 'ボーラス反映前の使用可能日数'}
+                value={`${fmtDays(result.usableDaysBeforeBolus)} 日`}
+              />
+            )}
             <ResultItem
-              label={result.mode === 'remaining' ? '残り使用可能日数（持続のみ）' : 'ボーラス反映前の使用可能日数'}
-              value={`${fmtDays(result.usableDaysBeforeBolus)} 日`}
-            />
-            <ResultItem
-              label={result.mode === 'remaining' ? '残り使用可能日数（ボーラス込み）' : 'ボーラス反映後の使用可能日数'}
+              label={
+                !result.bolusEnabled
+                  ? '使用可能日数'
+                  : result.mode === 'remaining'
+                    ? '残り使用可能日数（ボーラス込み）'
+                    : 'ボーラス反映後の使用可能日数'
+              }
               value={result.exhausted ? '交換必要' : `${fmtDays(result.usableDaysAfterBolus)} 日`}
               accent
             />
             <ResultItem
-              label="空になる予定日時"
+              label="空になる予定日時（＝次回交換目安）"
               value={result.emptyDateTime && !result.exhausted ? formatJPDateTime(result.emptyDateTime) : '—'}
-            />
-            <ResultItem
-              label="推奨交換目安日時"
-              value={
-                result.recommendedExchangeDateTime && !result.exhausted
-                  ? formatJPDateTime(result.recommendedExchangeDateTime)
-                  : '—'
-              }
               accent
             />
           </ResultGrid>
@@ -409,29 +395,33 @@ export default function MorphineInfusionTab() {
                     : 'なし'
                 }
               />
-              <ResultItem label="ボーラス1日回数" value={`${result.bolusPerDayCount} 回/日`} />
-              <ResultItem label="安全マージン" value={`${result.safetyMarginHours} 時間`} />
+              {result.bolusEnabled && <ResultItem label="ボーラス1日回数" value={`${result.bolusPerDayCount} 回/日`} />}
             </ResultGrid>
 
             <h4 className="section-head">計算式</h4>
             <ul className="detail-formula">
               <li>モルヒネ濃度 = モルヒネ総量 ÷ 薬液全量 = {result.morphineTotalMg} ÷ {result.totalVolumeMl} = {fmtMgPerMl(result.concentrationMgPerMl)} mg/mL</li>
               <li>mg/時 = 濃度 × 投与速度 = {fmtMgPerMl(result.concentrationMgPerMl)} × {result.rateMlPerHour} = {fmtMgPerHour(result.mgPerHour)} mg/時</li>
-              <li>mg/日（持続）= mg/時 × 24 = {fmtMgPerDay(result.mgPerDayContinuous)} mg/日</li>
-              <li>ボーラス1回量 = {result.bolusMode === 'hours' ? `投与速度 × 時間分 = ${result.rateMlPerHour} × ${result.bolusHours}` : '直接入力'} = {fmtMl(result.bolusOnceMl)} mL</li>
-              <li>ボーラス1日使用量 = 1回量 × 1日回数 = {fmtMl(result.bolusOnceMl)} × {result.bolusPerDayCount} = {fmtMl(result.bolusMlPerDay)} mL/日</li>
-              <li>mg/日（ボーラス込み）= 持続 ＋ ボーラス = {fmtMgPerDay(result.mgPerDayContinuous)} ＋ {fmtMgPerHour(result.bolusMgPerDay)} = {fmtMgPerDay(result.mgPerDayTotal)} mg/日</li>
-              <li>実効消費速度 = 投与速度 ＋ ボーラス1日使用量 ÷ 24 = {fmtMl(result.effectiveRateMlPerHour)} mL/時</li>
+              <li>1日モルヒネ量（持続）= mg/時 × 24 = {fmtMgPerDay(result.mgPerDayContinuous)} mg/日 ※ボーラス分は含めない</li>
+              {result.bolusEnabled && (
+                <>
+                  <li>ボーラス1回量 = {result.bolusMode === 'hours' ? `投与速度 × 時間分 = ${result.rateMlPerHour} × ${result.bolusHours}` : '直接入力'} = {fmtMl(result.bolusOnceMl)} mL</li>
+                  <li>ボーラス1日使用量 = 1回量 × 1日回数 = {fmtMl(result.bolusOnceMl)} × {result.bolusPerDayCount} = {fmtMl(result.bolusMlPerDay)} mL/日</li>
+                  <li>実効消費速度 = 投与速度 ＋ ボーラス1日使用量 ÷ 24 = {fmtMl(result.effectiveRateMlPerHour)} mL/時</li>
+                </>
+              )}
               <li>
-                {result.mode === 'remaining' ? '残り時間' : '使用可能時間'}（反映後）= {result.mode === 'remaining' ? '残液量' : '薬液全量'} ÷ 実効消費速度 = {result.volumeForDurationMl} ÷ {fmtMl(result.effectiveRateMlPerHour)} = {fmt1(result.usableHoursAfterBolus)} 時間
+                {result.mode === 'remaining' ? '残り時間' : '使用可能時間'} = {result.mode === 'remaining' ? '残液量' : '薬液全量'} ÷ {result.bolusEnabled ? '実効消費速度' : '投与速度'} = {result.volumeForDurationMl} ÷ {fmtMl(result.effectiveRateMlPerHour)} = {fmt1(result.usableHoursAfterBolus)} 時間
               </li>
               <li>使用可能日数 = 使用可能時間 ÷ 24 = {fmtDays(result.usableDaysAfterBolus)} 日</li>
-              <li>短縮時間 = 反映前使用可能時間 − 反映後 = {fmt1(result.usableHoursBeforeBolus)} − {fmt1(result.usableHoursAfterBolus)} = {fmtShortenHours(result.shortenHours)} 時間</li>
-              <li>空になる予定日時 = {result.mode === 'remaining' ? '確認日時' : '開始日時'} ＋ 使用可能時間（反映後）</li>
-              <li>推奨交換目安 = 空になる予定日時 − 安全マージン（{result.safetyMarginHours}時間）</li>
+              {result.bolusEnabled && (
+                <li>短縮時間 = 反映前使用可能時間 − 反映後 = {fmt1(result.usableHoursBeforeBolus)} − {fmt1(result.usableHoursAfterBolus)} = {fmtShortenHours(result.shortenHours)} 時間</li>
+              )}
+              <li>空になる予定日時（＝次回交換目安）= {result.mode === 'remaining' ? '確認日時' : '開始日時'} ＋ 使用可能時間</li>
             </ul>
             <p className="detail-note">
-              ※ ボーラスは「1日の使用回数」で持続投与に上乗せして計算しています。表示は各項目の目安桁に丸めていますが、内部計算は丸めずに行っています。
+              ※ ボーラスは「1日の使用回数」で使用可能日数に反映しますが、そのモルヒネ量は「1日モルヒネ量（持続）」には合算していません。
+              表示は各項目の目安桁に丸めていますが、内部計算は丸めずに行っています。
             </p>
           </DetailBox>
         </>

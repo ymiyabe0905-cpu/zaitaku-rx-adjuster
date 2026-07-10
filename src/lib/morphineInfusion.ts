@@ -39,7 +39,6 @@ export interface MorphineInfusionInput {
   bolusHours: number; // 時間分モードでの時間（例: 1.0）
   bolusManualMl: number; // 直接入力モードでのボーラス1回量 mL
   bolusPerDay: number; // ボーラス 1日の使用回数（0以上の整数）
-  safetyMarginHours: number; // 安全マージン（交換を何時間前倒しするか）
 }
 
 export interface MorphineInfusionResult {
@@ -60,7 +59,6 @@ export interface MorphineInfusionResult {
   bolusMode: BolusMode;
   bolusHours: number;
   bolusPerDay: number;
-  safetyMarginHours: number;
 
   // 計算に使った基準（新規=薬液全量/開始日時、残液=残液量/確認日時）
   volumeForDurationMl: number; // 残り時間計算に使う量
@@ -69,8 +67,7 @@ export interface MorphineInfusionResult {
   // 計算結果（ok=false のとき一部 null）
   concentrationMgPerMl: number | null; // モルヒネ濃度 mg/mL
   mgPerHour: number | null; // 1時間あたりモルヒネ量 mg/時（持続）
-  mgPerDayContinuous: number | null; // 1日あたりモルヒネ量 mg/日（持続のみ）
-  mgPerDayTotal: number | null; // 1日あたりモルヒネ量 mg/日（持続＋ボーラス）
+  mgPerDayContinuous: number | null; // 1日あたりモルヒネ量 mg/日（持続のみ。ボーラスは含めない）
   bolusOnceMl: number; // ボーラス1回量 mL
   bolusOnceMg: number | null; // ボーラス1回あたりモルヒネ量 mg
   bolusPerDayCount: number; // ボーラス1日回数（正規化後）
@@ -82,8 +79,7 @@ export interface MorphineInfusionResult {
   usableHoursAfterBolus: number | null; // ボーラス反映後の使用可能時間
   usableDaysBeforeBolus: number | null; // ボーラス反映前の使用可能日数
   usableDaysAfterBolus: number | null; // ボーラス反映後の使用可能日数
-  emptyDateTime: Date | null; // 空になる予定日時
-  recommendedExchangeDateTime: Date | null; // 推奨交換目安日時
+  emptyDateTime: Date | null; // 空になる予定日時（＝次回交換目安）
 }
 
 /**
@@ -123,13 +119,11 @@ function failed(input: MorphineInfusionInput, errors: string[]): MorphineInfusio
     bolusMode: input.bolusMode,
     bolusHours: input.bolusHours,
     bolusPerDay: input.bolusPerDay,
-    safetyMarginHours: input.safetyMarginHours,
     volumeForDurationMl: 0,
     referenceDateTime: input.mode === 'remaining' ? input.checkDateTime : input.startDateTime,
     concentrationMgPerMl: null,
     mgPerHour: null,
     mgPerDayContinuous: null,
-    mgPerDayTotal: null,
     bolusOnceMl: 0,
     bolusOnceMg: null,
     bolusPerDayCount: 0,
@@ -142,7 +136,6 @@ function failed(input: MorphineInfusionInput, errors: string[]): MorphineInfusio
     usableDaysBeforeBolus: null,
     usableDaysAfterBolus: null,
     emptyDateTime: null,
-    recommendedExchangeDateTime: null,
   };
 }
 
@@ -181,8 +174,7 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
   }
   const bolusOnceMg = bolusOnceMl * concentrationMgPerMl;
   const bolusMlPerDay = bolusOnceMl * bolusPerDayCount; // mL/日
-  const bolusMgPerDay = bolusMlPerDay * concentrationMgPerMl; // mg/日
-  const mgPerDayTotal = mgPerDayContinuous + bolusMgPerDay; // mg/日（持続＋ボーラス）
+  const bolusMgPerDay = bolusMlPerDay * concentrationMgPerMl; // mg/日（参考。1日量には合算しない）
 
   // --- 実効消費速度（持続＋ボーラスを1日ならしたmL/時） ---
   const effectiveRateMlPerHour = rateMlPerHour + bolusMlPerDay / HOURS_PER_DAY;
@@ -202,13 +194,9 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
   const usableDaysAfterBolus = usableHoursAfterBolus / HOURS_PER_DAY;
   const shortenHours = usableHoursBeforeBolus - usableHoursAfterBolus; // ボーラスによる短縮
 
-  // --- 日時計算 ---
+  // --- 日時計算（空になる予定日時＝次回交換目安） ---
   const startValid = referenceDateTime instanceof Date && !Number.isNaN(referenceDateTime.getTime());
   const emptyDateTime = startValid ? addHours(referenceDateTime, usableHoursAfterBolus) : null;
-  const safetyMarginHours = Number.isFinite(input.safetyMarginHours)
-    ? Math.max(0, input.safetyMarginHours)
-    : 0;
-  const recommendedExchangeDateTime = emptyDateTime ? addHours(emptyDateTime, -safetyMarginHours) : null;
 
   // --- 警告（赤字） ---
   const warnings: string[] = [];
@@ -228,8 +216,8 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
   if (rateMlPerHour < L.rateMlPerHour.min || rateMlPerHour > L.rateMlPerHour.max) {
     warnings.push(`投与速度が想定範囲（${L.rateMlPerHour.min}〜${L.rateMlPerHour.max}mL/時）外です。入力値を確認してください。`);
   }
-  if (mgPerDayTotal > L.mgPerDay.max) {
-    warnings.push(`1日モルヒネ量が${L.mgPerDay.max}mg/日を超えています。濃度・投与速度・ボーラスの入力値を確認してください。`);
+  if (mgPerDayContinuous != null && mgPerDayContinuous > L.mgPerDay.max) {
+    warnings.push(`1日モルヒネ量（持続）が${L.mgPerDay.max}mg/日を超えています。濃度・投与速度の入力値を確認してください。`);
   }
   if (bolusPerDayCount > L.bolusPerDay.max) {
     warnings.push(`ボーラス1日回数が想定範囲（0〜${L.bolusPerDay.max}回/日）外です。入力値を確認してください。`);
@@ -251,13 +239,11 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
     bolusMode: input.bolusMode,
     bolusHours: input.bolusHours,
     bolusPerDay: input.bolusPerDay,
-    safetyMarginHours,
     volumeForDurationMl,
     referenceDateTime,
     concentrationMgPerMl,
     mgPerHour,
     mgPerDayContinuous,
-    mgPerDayTotal,
     bolusOnceMl,
     bolusOnceMg,
     bolusPerDayCount,
@@ -270,7 +256,6 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
     usableDaysBeforeBolus,
     usableDaysAfterBolus,
     emptyDateTime,
-    recommendedExchangeDateTime,
   };
 }
 
