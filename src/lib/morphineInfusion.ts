@@ -2,68 +2,83 @@
  * モルヒネ持続投与計算ロジック（UI から分離）
  *
  * 目的:
- *  シリンジポンプ・レガシー・クデクエイミーなどの持続投与デバイスについて、
- *  薬液全量・モルヒネ総量・投与速度から
+ *  持続投与デバイスについて、薬液全量・モルヒネ総量・投与速度から
  *    - モルヒネ濃度 / 1時間・1日あたりモルヒネ量
- *    - ボーラス（追加投与）を反映した使用可能日数
- *    - 空になる予定日時 / 推奨交換目安日時
+ *    - ボーラス（追加投与）を「1日の使用回数」で反映した使用可能日数
+ *    - 空になる予定日時 / 安全マージンを引いた推奨交換目安日時
+ *    - 途中の残液量からの残り時間の再計算
  *  を「確認補助」として計算する。
  *
  * 設計方針:
  *  - 計算は表示から独立させ、丸めは一切しない（丸めは表示側の責務）。
- *  - 変数名に単位（Ml / Mg / Hours / Days）を含め、単位の取り違えを防ぐ。
+ *  - 変数名に単位（Ml / Mg / Hours / Days / PerDay）を含め、単位の取り違えを防ぐ。
+ *  - ボーラスは「1日の使用回数」で扱い、持続投与に上乗せする1日消費量として計算する。
+ *      実効消費速度 mL/時 = 投与速度 + （ボーラス1回量 × 1日回数）÷ 24
  *  - 致命的な入力不備（0以下・未入力）は errors に入れ、値は null にする。
- *  - 医療判断が絡む範囲チェックは「警告(warnings)」に留め、上限下限は
+ *  - 医療判断が絡む範囲チェックは warnings（赤字）に留め、上限下限は
  *    MORPHINE_LIMITS 定数で簡単に調整できるようにする。
- *  - これらの上限下限は医学的な安全域ではなく、明らかな入力ミス検知のための目安。
+ *    これらは医学的な安全域ではなく、明らかな入力ミス検知のための目安。
  */
 
 import { addHours } from './dateUtils';
 
 export type BolusMode = 'hours' | 'ml';
+/** 'new' = 開始日時から新規計算 / 'remaining' = 途中の残液量から再計算 */
+export type CalcMode = 'new' | 'remaining';
 
 export interface MorphineInfusionInput {
-  deviceKey: string; // デバイス種別（morphineDevices の key）
-  totalVolumeMl: number; // 薬液全量 mL
+  totalVolumeMl: number; // 薬液全量 mL（濃度計算・新規計算の基準量）
   morphineTotalMg: number; // モルヒネ総量 mg
   rateMlPerHour: number; // 投与速度 mL/時
-  startDateTime: Date; // 投与開始日時
+  mode: CalcMode; // 計算モード
+  startDateTime: Date; // 新規計算: 投与開始日時
+  remainingVolumeMl: number; // 残液再計算: 現在の残液量 mL
+  checkDateTime: Date; // 残液再計算: 残量を確認した日時
   bolusEnabled: boolean; // ボーラス（追加投与）あり／なし
   bolusMode: BolusMode; // 'hours'=投与速度の◯時間分 / 'ml'=直接mL入力
   bolusHours: number; // 時間分モードでの時間（例: 1.0）
   bolusManualMl: number; // 直接入力モードでのボーラス1回量 mL
-  bolusCount: number; // ボーラス使用回数（0以上の整数）
+  bolusPerDay: number; // ボーラス 1日の使用回数（0以上の整数）
   safetyMarginHours: number; // 安全マージン（交換を何時間前倒しするか）
 }
 
 export interface MorphineInfusionResult {
-  ok: boolean; // 主要計算（濃度・使用可能日数）が成立したか
+  ok: boolean; // 主要計算が成立したか
   errors: string[]; // 計算を妨げる致命的な入力エラー
   warnings: string[]; // 注意（赤字表示）警告
-  bolusExceedsVolume: boolean; // ボーラス総使用量が薬液全量以上か
+  exhausted: boolean; // 残液再計算で残量が0以下（交換必要）
 
   // 入力の確認用（エコーバック）
-  deviceKey: string;
+  mode: CalcMode;
   totalVolumeMl: number;
   morphineTotalMg: number;
   rateMlPerHour: number;
   startDateTime: Date;
+  remainingVolumeMl: number;
+  checkDateTime: Date;
   bolusEnabled: boolean;
   bolusMode: BolusMode;
   bolusHours: number;
-  bolusCount: number;
+  bolusPerDay: number;
   safetyMarginHours: number;
+
+  // 計算に使った基準（新規=薬液全量/開始日時、残液=残液量/確認日時）
+  volumeForDurationMl: number; // 残り時間計算に使う量
+  referenceDateTime: Date; // 空予定を数える起点日時
 
   // 計算結果（ok=false のとき一部 null）
   concentrationMgPerMl: number | null; // モルヒネ濃度 mg/mL
-  mgPerHour: number | null; // 1時間あたりモルヒネ量 mg/時
-  mgPerDay: number | null; // 1日あたりモルヒネ量 mg/日
-  bolusOnceMl: number; // ボーラス1回量 mL（なし・不成立時は0）
+  mgPerHour: number | null; // 1時間あたりモルヒネ量 mg/時（持続）
+  mgPerDayContinuous: number | null; // 1日あたりモルヒネ量 mg/日（持続のみ）
+  mgPerDayTotal: number | null; // 1日あたりモルヒネ量 mg/日（持続＋ボーラス）
+  bolusOnceMl: number; // ボーラス1回量 mL
   bolusOnceMg: number | null; // ボーラス1回あたりモルヒネ量 mg
-  bolusTotalMl: number; // ボーラス総使用量 mL
-  bolusTotalMg: number | null; // ボーラス総モルヒネ量 mg
+  bolusPerDayCount: number; // ボーラス1日回数（正規化後）
+  bolusMlPerDay: number; // ボーラス1日使用量 mL/日
+  bolusMgPerDay: number | null; // ボーラス1日モルヒネ量 mg/日
+  effectiveRateMlPerHour: number | null; // 実効消費速度 mL/時（持続＋ボーラス平均）
   shortenHours: number | null; // ボーラスによる短縮時間 時間
-  usableHoursBeforeBolus: number | null; // ボーラス反映前の使用可能時間
+  usableHoursBeforeBolus: number | null; // ボーラス反映前の使用可能時間（持続のみ）
   usableHoursAfterBolus: number | null; // ボーラス反映後の使用可能時間
   usableDaysBeforeBolus: number | null; // ボーラス反映前の使用可能日数
   usableDaysAfterBolus: number | null; // ボーラス反映後の使用可能日数
@@ -73,15 +88,15 @@ export interface MorphineInfusionResult {
 
 /**
  * 入力値の範囲チェック用の定数。
- * ※ これは医学的な安全域ではなく、明らかな入力ミス（桁違いなど）を検知するための目安。
- *    現場の運用や対象薬剤に合わせて、ここの数値だけ調整すればよい。
+ * ※ 医学的な安全域ではなく、明らかな入力ミス（桁違いなど）検知のための目安。
+ *    現場や対象薬剤に合わせて、ここの数値だけ調整すればよい。
  */
 export const MORPHINE_LIMITS = {
   totalVolumeMl: { min: 0.1, max: 1000 }, // 薬液全量 mL
   morphineTotalMg: { min: 0.1, max: 5000 }, // モルヒネ総量 mg
   rateMlPerHour: { min: 0.01, max: 50 }, // 投与速度 mL/時
-  mgPerDay: { max: 2000 }, // 1日モルヒネ量 mg/日（これを超えたら要確認）
-  bolusCount: { max: 500 }, // ボーラス使用回数
+  mgPerDay: { max: 2000 }, // 1日モルヒネ量 mg/日（超えたら要確認）
+  bolusPerDay: { max: 96 }, // ボーラス1日回数（15分ロックでも最大96回/日）
 } as const;
 
 const HOURS_PER_DAY = 24;
@@ -96,24 +111,31 @@ function failed(input: MorphineInfusionInput, errors: string[]): MorphineInfusio
     ok: false,
     errors,
     warnings: [],
-    bolusExceedsVolume: false,
-    deviceKey: input.deviceKey,
+    exhausted: false,
+    mode: input.mode,
     totalVolumeMl: input.totalVolumeMl,
     morphineTotalMg: input.morphineTotalMg,
     rateMlPerHour: input.rateMlPerHour,
     startDateTime: input.startDateTime,
+    remainingVolumeMl: input.remainingVolumeMl,
+    checkDateTime: input.checkDateTime,
     bolusEnabled: input.bolusEnabled,
     bolusMode: input.bolusMode,
     bolusHours: input.bolusHours,
-    bolusCount: input.bolusCount,
+    bolusPerDay: input.bolusPerDay,
     safetyMarginHours: input.safetyMarginHours,
+    volumeForDurationMl: 0,
+    referenceDateTime: input.mode === 'remaining' ? input.checkDateTime : input.startDateTime,
     concentrationMgPerMl: null,
     mgPerHour: null,
-    mgPerDay: null,
+    mgPerDayContinuous: null,
+    mgPerDayTotal: null,
     bolusOnceMl: 0,
     bolusOnceMg: null,
-    bolusTotalMl: 0,
-    bolusTotalMg: null,
+    bolusPerDayCount: 0,
+    bolusMlPerDay: 0,
+    bolusMgPerDay: null,
+    effectiveRateMlPerHour: null,
     shortenHours: null,
     usableHoursBeforeBolus: null,
     usableHoursAfterBolus: null,
@@ -142,11 +164,11 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
 
   // --- 基本計算（丸めない） ---
   const concentrationMgPerMl = morphineTotalMg / totalVolumeMl; // mg/mL
-  const mgPerHour = concentrationMgPerMl * rateMlPerHour; // mg/時
-  const mgPerDay = mgPerHour * HOURS_PER_DAY; // mg/日
+  const mgPerHour = concentrationMgPerMl * rateMlPerHour; // mg/時（持続）
+  const mgPerDayContinuous = mgPerHour * HOURS_PER_DAY; // mg/日（持続のみ）
 
-  // --- ボーラス ---
-  const bolusCount = input.bolusEnabled ? Math.max(0, Math.floor(input.bolusCount || 0)) : 0;
+  // --- ボーラス（1日の使用回数ベース） ---
+  const bolusPerDayCount = input.bolusEnabled ? Math.max(0, Math.floor(input.bolusPerDay || 0)) : 0;
   let bolusOnceMl = 0;
   if (input.bolusEnabled) {
     bolusOnceMl =
@@ -158,23 +180,31 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
     if (bolusOnceMl < 0) bolusOnceMl = 0;
   }
   const bolusOnceMg = bolusOnceMl * concentrationMgPerMl;
-  const bolusTotalMl = bolusOnceMl * bolusCount;
-  const bolusTotalMg = bolusTotalMl * concentrationMgPerMl;
-  const shortenHours = bolusTotalMl / rateMlPerHour; // 短縮時間 時間
+  const bolusMlPerDay = bolusOnceMl * bolusPerDayCount; // mL/日
+  const bolusMgPerDay = bolusMlPerDay * concentrationMgPerMl; // mg/日
+  const mgPerDayTotal = mgPerDayContinuous + bolusMgPerDay; // mg/日（持続＋ボーラス）
+
+  // --- 実効消費速度（持続＋ボーラスを1日ならしたmL/時） ---
+  const effectiveRateMlPerHour = rateMlPerHour + bolusMlPerDay / HOURS_PER_DAY;
+
+  // --- 残り時間計算の基準（新規=薬液全量/開始日時、残液=残液量/確認日時） ---
+  const isRemaining = input.mode === 'remaining';
+  const referenceDateTime = isRemaining ? input.checkDateTime : input.startDateTime;
+  // 残液再計算では残液量、それ以外は薬液全量。0以下は0にクランプ（落とさない）
+  const rawVolume = isRemaining ? input.remainingVolumeMl : totalVolumeMl;
+  const volumeForDurationMl = Number.isFinite(rawVolume) && rawVolume > 0 ? rawVolume : 0;
+  const exhausted = isRemaining && volumeForDurationMl <= 0;
 
   // --- 使用可能時間・日数 ---
-  const usableHoursBeforeBolus = totalVolumeMl / rateMlPerHour;
-  const usableHoursAfterBolus = (totalVolumeMl - bolusTotalMl) / rateMlPerHour; // = before - shorten
+  const usableHoursBeforeBolus = volumeForDurationMl / rateMlPerHour; // 持続のみ
+  const usableHoursAfterBolus = volumeForDurationMl / effectiveRateMlPerHour; // 持続＋ボーラス
   const usableDaysBeforeBolus = usableHoursBeforeBolus / HOURS_PER_DAY;
   const usableDaysAfterBolus = usableHoursAfterBolus / HOURS_PER_DAY;
+  const shortenHours = usableHoursBeforeBolus - usableHoursAfterBolus; // ボーラスによる短縮
 
-  // --- ボーラス総使用量が薬液全量以上（計算不能・要確認） ---
-  const bolusExceedsVolume = bolusTotalMl >= totalVolumeMl;
-
-  // --- 日時計算（ボーラス超過時は空になる予定・交換目安を出さない） ---
-  const startValid = input.startDateTime instanceof Date && !Number.isNaN(input.startDateTime.getTime());
-  const emptyDateTime =
-    !bolusExceedsVolume && startValid ? addHours(input.startDateTime, usableHoursAfterBolus) : null;
+  // --- 日時計算 ---
+  const startValid = referenceDateTime instanceof Date && !Number.isNaN(referenceDateTime.getTime());
+  const emptyDateTime = startValid ? addHours(referenceDateTime, usableHoursAfterBolus) : null;
   const safetyMarginHours = Number.isFinite(input.safetyMarginHours)
     ? Math.max(0, input.safetyMarginHours)
     : 0;
@@ -182,10 +212,11 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
 
   // --- 警告（赤字） ---
   const warnings: string[] = [];
-  if (bolusExceedsVolume) {
-    warnings.push(
-      'ボーラス総使用量が薬液全量以上です。すでに交換が必要か、入力値（ボーラス回数・1回量・薬液全量）に誤りがある可能性があります。ご確認ください。',
-    );
+  if (isRemaining && input.remainingVolumeMl > totalVolumeMl) {
+    warnings.push('残液量が薬液全量を超えています。入力値（残液量・薬液全量）を確認してください。');
+  }
+  if (exhausted) {
+    warnings.push('残液がありません（0mL以下）。交換が必要か、残液量の入力を確認してください。');
   }
   const L = MORPHINE_LIMITS;
   if (totalVolumeMl < L.totalVolumeMl.min || totalVolumeMl > L.totalVolumeMl.max) {
@@ -197,35 +228,42 @@ export function calculateMorphineInfusion(input: MorphineInfusionInput): Morphin
   if (rateMlPerHour < L.rateMlPerHour.min || rateMlPerHour > L.rateMlPerHour.max) {
     warnings.push(`投与速度が想定範囲（${L.rateMlPerHour.min}〜${L.rateMlPerHour.max}mL/時）外です。入力値を確認してください。`);
   }
-  if (mgPerDay > L.mgPerDay.max) {
-    warnings.push(`1日モルヒネ量が${L.mgPerDay.max}mg/日を超えています。濃度・投与速度の入力値を確認してください。`);
+  if (mgPerDayTotal > L.mgPerDay.max) {
+    warnings.push(`1日モルヒネ量が${L.mgPerDay.max}mg/日を超えています。濃度・投与速度・ボーラスの入力値を確認してください。`);
   }
-  if (bolusCount > L.bolusCount.max) {
-    warnings.push(`ボーラス使用回数が想定範囲（0〜${L.bolusCount.max}回）外です。入力値を確認してください。`);
+  if (bolusPerDayCount > L.bolusPerDay.max) {
+    warnings.push(`ボーラス1日回数が想定範囲（0〜${L.bolusPerDay.max}回/日）外です。入力値を確認してください。`);
   }
 
   return {
     ok: true,
     errors: [],
     warnings,
-    bolusExceedsVolume,
-    deviceKey: input.deviceKey,
+    exhausted,
+    mode: input.mode,
     totalVolumeMl,
     morphineTotalMg,
     rateMlPerHour,
     startDateTime: input.startDateTime,
+    remainingVolumeMl: input.remainingVolumeMl,
+    checkDateTime: input.checkDateTime,
     bolusEnabled: input.bolusEnabled,
     bolusMode: input.bolusMode,
     bolusHours: input.bolusHours,
-    bolusCount,
+    bolusPerDay: input.bolusPerDay,
     safetyMarginHours,
+    volumeForDurationMl,
+    referenceDateTime,
     concentrationMgPerMl,
     mgPerHour,
-    mgPerDay,
+    mgPerDayContinuous,
+    mgPerDayTotal,
     bolusOnceMl,
     bolusOnceMg,
-    bolusTotalMl,
-    bolusTotalMg,
+    bolusPerDayCount,
+    bolusMlPerDay,
+    bolusMgPerDay,
+    effectiveRateMlPerHour,
     shortenHours,
     usableHoursBeforeBolus,
     usableHoursAfterBolus,

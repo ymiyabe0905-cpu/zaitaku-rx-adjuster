@@ -640,6 +640,21 @@ body {
   color: #4a648a;
 }
 
+/* ---------- 投与速度の増減ステッパー ---------- */
+.rate-stepper {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.rate-stepper input {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+}
+.rate-stepper .step-btn {
+  flex: 0 0 auto;
+}
+
 /* ---------- 結果表示 ---------- */
 .result-grid {
   display: grid;
